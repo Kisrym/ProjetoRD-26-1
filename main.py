@@ -11,7 +11,7 @@ namespace = input("Digite o namespace: ")
 
 server_thread = threading.Thread(
     target=servidor,
-    args=(connected_peers,),
+    args=(connected_peers,name, namespace),
     daemon=True
 )
 
