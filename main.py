@@ -6,6 +6,9 @@ from cli import cli_loop
 
 connected_peers = {}
 
+name = input("Digite seu nome: ")
+namespace = input("Digite o namespace: ")
+
 server_thread = threading.Thread(
     target=servidor,
     args=(connected_peers,),
@@ -14,7 +17,7 @@ server_thread = threading.Thread(
 
 keepalive_thread = threading.Thread(
     target=keep_alive,
-    args=(connected_peers,),
+    args=(connected_peers, name, namespace),
     daemon=True
 )
 

@@ -1,9 +1,11 @@
+import json
 import socket
 import time
 from rendezvous_connection import discorver_handler, register_handler
+from config import PEER_PORT, HOST, PORT
 
 
-def hand_shake(peer_ip, peer_port):
+def hand_shake(peer_ip, peer_port,name, namespace):
     hello_msg = {
         "type": "HELLO",
         "peer_id": f"{name}@{namespace}",
@@ -51,7 +53,7 @@ def ping(peer_ip, peer_port):
     except Exception as e:
         return False
 
-def keep_alive(connected_peers):
+def keep_alive(connected_peers,name,namespace):
     contador = 0
     while True:
         if conectado == False :

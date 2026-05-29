@@ -1,6 +1,7 @@
 import socket
 import json
 import time
+from config import HOST, PORT
 
 def register_handler(name, namespace, peer_port):
     contador = 0
