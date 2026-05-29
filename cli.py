@@ -1,3 +1,8 @@
+import json
+import socket
+import time
+
+
 def cli_loop(connected_peers):
     while True:
         cmd = input("Digite um comando (view, exit): ").strip().upper()
