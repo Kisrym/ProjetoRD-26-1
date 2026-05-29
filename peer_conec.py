@@ -1,6 +1,6 @@
 import socket
 import time
-from rendezvous_connection import register, discover
+from rendezvous_connection import discorver_handler, register_handler
 
 
 def hand_shake(peer_ip, peer_port):
@@ -55,24 +55,17 @@ def keep_alive(connected_peers):
     contador = 0
     while True:
         if conectado == False :
-            if register(name, namespace, PEER_PORT) == 1:
+            if register_handler(name, namespace, PEER_PORT) == 1:
                 conectado = True
-                tentativas = 0
             else:
                 print("Falha ao registrar. Tente novamente.")
-                tentativas += 1
-                if tentativas >= 5:
-                    print("Número máximo de tentativas atingido. Encerrando.")
-                    break
+                return 0
         if conectado == True and time.time() - contador >= 30:
-            peers = discover()
+            peers = discorver_handler()
+            contador = time.time()
             if peers == []:
-                print("Peer não encontrado. Registrando novamente.")
-                contador = 0
                 conectado = False
             elif peers != []:
-                contador = time.time()
-                print("Peer encontrado. Mantendo registro.")
                 for peer in peers:
                     peer_id = f'{peer["name"]}@{peer["namespace"]}'
                     if peer_id not in connected_peers:
