@@ -1,9 +1,10 @@
 import json
 import socket
 import time
+import uuid
 
 
-def cli_loop(connected_peers):
+def cli_loop(connected_peers,name,namespace):
     while True:
         cmd = input("Digite um comando (view, exit): ").strip().upper()
         if cmd == "VIEW":
@@ -24,22 +25,32 @@ def cli_loop(connected_peers):
                 continue
 
             message = input("Digite a mensagem a ser enviada: ").strip()
-            Peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            Peer.connect((connected_peers[target]["ip"], connected_peers[target]["port"]))
-            '''msg = {
+            Peer = connected_peers[target]["sock"]
+            msg = {
                 "type": "SEND",
-                "msg_id": "uuid",
+                "msg_id": str(uuid.uuid4()),
                 "src": name + "@" + namespace,
                 "dst": target,
                 "payload": message,
                 "require_ack": True,
                 "ttl": 1
-            }'''
+            }
             Peer.sendall((json.dumps(msg) + "\n").encode())
-            response = Peer.recv(4096)
-            print ("Resposta do servidor:", response.decode())
-            data = json.loads(response)
-            if data["type"] == "ACK":
+            response = Peer.recv(4096).decode()
+            messages = response.strip().split("\n")
+            ack_received = False
+
+            for raw_msg in messages:
+                if raw_msg.strip():
+                    data = json.loads(raw_msg)
+                    print("Mensagem:", data)
+
+                    if data.get("type") == "ACK":
+                        ack_received = True
+
+            print("Resposta bruta:", response)
+
+            if ack_received:
                 print("Mensagem entregue com sucesso!")
             else:
                 print("Falha ao entregar a mensagem.")

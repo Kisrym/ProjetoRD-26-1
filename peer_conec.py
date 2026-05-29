@@ -80,6 +80,7 @@ def keep_alive(connected_peers,name,namespace):
                     sock = hand_shake(peer["ip"], peer["port"],peer_id)
                     if sock:
                         connected_peers[peer_id] = {
+                            "peer_id": peer_id,
                             "ip": peer["ip"],
                             "port": peer["port"],
                             "sock": sock,

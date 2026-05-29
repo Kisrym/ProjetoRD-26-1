@@ -25,4 +25,4 @@ server_thread.start()
 
 keepalive_thread.start()
 
-cli_loop(connected_peers)
+cli_loop(connected_peers,name,namespace)
