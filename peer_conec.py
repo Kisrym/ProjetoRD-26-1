@@ -1,83 +1,102 @@
+from rendezvous_connection import discorver_handler, register_handler
+from config import PEER_PORT, HOST, PORT
+from datetime import datetime, timezone
+from server import peer_listener
 import json
 import socket
 import time
-from datetime import datetime, timezone
+import threading
 import uuid
-from rendezvous_connection import discorver_handler, register_handler
-from config import PEER_PORT, HOST, PORT
 
 
-def hand_shake(peer_ip, peer_port,peer_id):
+
+open_bye={}
+open_ping={}
+open_send={}
+open_hello = {}
+
+def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((peer_ip, peer_port))
+
+        event = threading.Event()
+        open_hello[peer_id] = event
+
+        threading.Thread(
+            target=peer_listener,
+            args=(sock, peer_id),
+            daemon=True
+        ).start()
+
         hello_msg = {
             "type": "HELLO",
-            "peer_id": peer_id,
+            "peer_id": f"{name}@{namespace}",
             "version": "1.0",
             "features": ["ack", "metrics"],
             "ttl": 1
         }
         sock.sendall((json.dumps(hello_msg) + "\n").encode())
 
-        response = sock.recv(4096).decode()
-        print("Resposta do peer:", response)
-        data = json.loads(response)
-        if data.get("type") == "HELLO_OK":
-            print(f"Conectado com {peer_ip}:{peer_port}")
+        if event.wait(timeout=5):
+            del open_hello[peer_id]
+            print(f"Registrado com {peer_ip}:{peer_port}")
             return sock
+
+        print("Timeout esperando HELLO_OK")
         sock.close()
         return None
     
     except Exception as e:
         print("Handshake error:", e)
-        return False
+        return None
 
 def ping(sock, peer_id):
+    msg_id = str(uuid.uuid4())
     try:
+        event = threading.Event()
+        open_ping[msg_id] = event
         ping_msg = {
             "type": "PING",
-            "msg_id": str(uuid.uuid4()),
+            "msg_id": msg_id,
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "ttl": 1
         }
         sock.sendall((json.dumps(ping_msg) + "\n").encode())
 
-        response = sock.recv(4096).decode()
-        print("Resposta do PING:", response)
-        data = json.loads(response)
-        if data.get("type") in ["PONG", "PING"]:
-            print(f"{peer_id} respondeu ao ping.")
+        if event.wait(timeout=5):
+            del open_ping[msg_id]
             return True
-        else:
-            print(f"{peer_id} respondeu com mensagem inesperada.")
-            return False
+        
+        open_ping.pop(msg_id, None)
+        print("Timeout esperando PONG")
+        return False
     
     except Exception as e:
         print(f"Erro ping {peer_id}:", e)
+        open_ping.pop(msg_id, None)
         return False
 
 def keep_alive(connected_peers,name,namespace):
     contador = 0
-    conectado = False
+    registrado = False
     while True:
-        if not conectado:
+        if not registrado:
             if register_handler(name, namespace, PEER_PORT) == 1:
-                conectado = True
+                registrado = True
             else:
                 print("Falha ao registrar. Tente novamente.")
                 return
-        if conectado and time.time() - contador >= 30:
+        if registrado and time.time() - contador >= 30:
             peers = discorver_handler()
             contador = time.time()
             if not peers:
-                conectado = False
+                registrado = False
                 continue
             for peer in peers:
                 peer_id = f'{peer["name"]}@{peer["namespace"]}'
                 if peer_id not in connected_peers:
-                    print(f"Conectando {peer_id}...")
-                    sock = hand_shake(peer["ip"], peer["port"],peer_id)
+                    sock = hand_shake(peer["ip"], peer["port"],peer_id,name,namespace)
                     if sock:
                         connected_peers[peer_id] = {
                             "peer_id": peer_id,
@@ -87,14 +106,10 @@ def keep_alive(connected_peers,name,namespace):
                             "last_ping": time.time()
                         }
                 else:   
-                    print(f"Pingando {peer_id}...")
-
                     sock = connected_peers[peer_id]["sock"]
-
                     if ping(sock, peer_id):
                         connected_peers[peer_id]["last_ping"] = time.time()
                     else:
-                        print(f"{peer_id} caiu. Removendo...")
                         sock.close()
                         del connected_peers[peer_id]
                 
