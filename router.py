@@ -32,7 +32,7 @@ def message_router(connected_peers, name, namespace):
             send_handler(conn, addr, connected_peers, msg, name, namespace)
 
         elif msg_type == "ACK":
-            ack_handler(conn, addr, connected_peers, msg)
+            ack_handler(msg)
 
         elif msg_type == "BYE":
             bye_handler(conn, connected_peers, msg, name, namespace)

@@ -38,17 +38,17 @@ def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
         sock.sendall((json.dumps(hello_msg) + "\n").encode())
 
         if event.wait(timeout=5):
-            del open_hello[peer_id]
+            open_hello.pop(peer_id, None)
             print(f"Registrado com {peer_ip}:{peer_port}")
             return sock
 
-        del open_hello[peer_id]
+        open_hello.pop(peer_id, None)
         print("Timeout esperando HELLO_OK")
         sock.close()
         return None
     
     except Exception as e:
-        del open_hello[peer_id]
+        open_hello.pop(peer_id, None)
         print("Handshake error:", e)
         return None
     finally:
@@ -89,15 +89,21 @@ def keep_alive(connected_peers,name,namespace):
                 registrado = True
             else:
                 return
-        if registrado and time.time() - contador >= 30:
+        if registrado and time.time() - contador >= 60:
             peers = discorver_handler()
+            for peer in peers:
+                if peer["name"] == name and peer["namespace"] == namespace:
+                    MEU_IP = peer["ip"]
             contador = time.time()
             if not peers:
                 registrado = False
                 continue
             for peer in peers:
+                if peer["ip"] == MEU_IP:
+                    continue
                 peer_id = f'{peer["name"]}@{peer["namespace"]}'
                 if peer_id not in connected_peers:
+                    print(f"Descobrindo {peer_id} em {peer['ip']}:{peer['port']}...")
                     sock = hand_shake(peer["ip"], peer["port"],peer_id,name,namespace)
                     if sock:
                         connected_peers[peer_id] = {
@@ -107,7 +113,10 @@ def keep_alive(connected_peers,name,namespace):
                             "sock": sock,
                             "last_ping": time.time()
                         }
-                else:   
+        if registrado:
+            for peer_id in list(connected_peers.keys()):
+                if time.time() - connected_peers[peer_id]["last_ping"] >= 60:
+                    print(f"Pingando {peer_id}...")
                     sock = connected_peers[peer_id]["sock"]
                     if ping(sock, peer_id):
                         connected_peers[peer_id]["last_ping"] = time.time()

@@ -1,12 +1,58 @@
 import json
 import socket
+import threading
 import time
 import uuid
+from server import peer_listener
 
+open_send = {}
+
+def send(peer_ip, peer_port,peer_id,name,namespace,target,message):
+    sock = None
+    try:
+        msg_id = str(uuid.uuid4())
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((peer_ip, peer_port))
+
+        event = threading.Event()
+        open_send[msg_id] = event
+
+        threading.Thread(
+            target=peer_listener,
+            args=(sock, peer_id),
+            daemon=True
+        ).start()   
+        msg = {
+            "type": "SEND",
+            "msg_id": msg_id,
+            "src": name + "@" + namespace,
+            "dst": target,
+            "payload": message,
+            "require_ack": True,
+            "ttl": 1
+        }
+
+        sock.sendall((json.dumps(msg) + "\n").encode())
+
+        if event.wait(timeout=5):
+            open_send.pop(peer_id, None)
+            print(f"Registrado com {peer_ip}:{peer_port}")
+            return sock
+
+        open_send.pop(peer_id, None)
+        print("Timeout esperando SEND_OK")
+        sock.close()
+        return None
+    except Exception as e:
+        open_send.pop(peer_id, None)
+        print("Handshake error:", e)
+        return None
+    finally:
+        open_send.pop(peer_id, None)
 
 def cli_loop(connected_peers,name,namespace):
     while True:
-        cmd = input("Digite um comando (view, exit): ").strip().upper()
+        cmd = input("Digite um comando (view, exit, send): ").strip().upper()
         if cmd == "VIEW":
             print("Peers conectados:")
             for peer_id, info in connected_peers.items():
@@ -25,33 +71,6 @@ def cli_loop(connected_peers,name,namespace):
                 continue
 
             message = input("Digite a mensagem a ser enviada: ").strip()
-            Peer = connected_peers[target]["sock"]
-            msg = {
-                "type": "SEND",
-                "msg_id": str(uuid.uuid4()),
-                "src": name + "@" + namespace,
-                "dst": target,
-                "payload": message,
-                "require_ack": True,
-                "ttl": 1
-            }
-            Peer.sendall((json.dumps(msg) + "\n").encode())
-            response = Peer.recv(4096).decode()
-            messages = response.strip().split("\n")
-            ack_received = False
-
-            for raw_msg in messages:
-                if raw_msg.strip():
-                    data = json.loads(raw_msg)
-                    print("Mensagem:", data)
-
-                    if data.get("type") == "ACK":
-                        ack_received = True
-
-            print("Resposta bruta:", response)
-
-            if ack_received:
-                print("Mensagem entregue com sucesso!")
-            else:
-                print("Falha ao entregar a mensagem.")
+            peer_info = connected_peers[target]
+            send(peer_info["ip"], peer_info["port"],target,name,namespace,target,message)
 
