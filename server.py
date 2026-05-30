@@ -37,7 +37,7 @@ def peer_listener(conn, addr):
         conn.close()
 
 def servidor(host="0.0.0.0", port=4000):
-
+    print(f"[SERVIDOR] escutando em {host}:{port}")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((host, port))

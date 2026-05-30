@@ -85,10 +85,9 @@ def keep_alive(connected_peers,name,namespace):
     registrado = False
     while True:
         if not registrado:
-            if register_handler(name, namespace, PEER_PORT) == 1:
+            if register_handler(name, namespace, PEER_PORT):
                 registrado = True
             else:
-                print("Falha ao registrar. Tente novamente.")
                 return
         if registrado and time.time() - contador >= 30:
             peers = discorver_handler()

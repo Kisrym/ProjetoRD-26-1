@@ -13,7 +13,7 @@ def register_handler(name, namespace, peer_port):
             print(f"Tentativa {contador} de registro falhou. Tentando novamente em 5 segundos...")
             time.sleep(5)
     print("Falha ao registrar o peer após 3 tentativas.")
-    return False
+
 
 def register(name, namespace, peer_port, ttl=3600):
     Rendezvous = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

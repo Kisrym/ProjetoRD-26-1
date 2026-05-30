@@ -3,7 +3,7 @@ from peer_conec import open_send
 import json
 import time
 
-def ack_handler(conn,addr, connected_peers, msg, name, namespace):
+def send_handler(conn,addr, connected_peers, msg, name, namespace):
     peer_id = msg.get("peer_id")
     if not connected_peers.get(peer_id):
         connected_peers[peer_id] = {
