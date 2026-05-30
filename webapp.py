@@ -38,8 +38,9 @@ def monitor_peers():
             last_peers = current_peers.copy()
         socketio.sleep(2)
 
-def enviar_para_chat_web(peer_id, mensagem):
-    socketio.emit('chat_message', {'peer': peer_id, 'msg': mensagem, 'type': 'received'}, namespace='/')
+def enviar_para_chat_web(target_id, mensagem):
+    # O target_id agora pode ser "joao@sala1" (privado) ou "group_sala1" (grupo)
+    socketio.emit('chat_message', {'target_id': target_id, 'msg': mensagem, 'type': 'received'}, namespace='/')
 
 @app.route('/')
 def index():

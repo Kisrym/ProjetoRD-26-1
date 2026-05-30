@@ -63,6 +63,16 @@ def cli_loop(connected_peers,name,namespace):
                 if peer_id in connected_peers:
                     send(peer_id,connected_peers[peer_id]["sock"],name,namespace,texto)
             continue
+        elif cmd.startswith("@group_msg"):
+            partes = cmd.split(" ", 2)
+            if len(partes) == 3:
+                alvo_namespace = partes[1]
+                texto = partes[2]
+                
+                # CHAME SUA FUNÇÃO DE MULTICAST/BROADCAST AQUI
+                # Exemplo: broadcast_para_grupo(alvo_namespace, texto, connected_peers)
+                print(f"[Log] Enviando para GRUPO {alvo_namespace}: {texto}")
+            continue
         if cmd == "sair":
             print("Encerrando o sistema...")
             break
