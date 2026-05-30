@@ -37,3 +37,13 @@ def ack_handler(msg):
 
     print("Recebido ACK sem solicitação prévia.")
     return False
+
+def pub_handler(msg):
+    dst = msg.get("dst", "").replace("#", "")
+    conteudo = msg.get('payload')
+    if dst and conteudo:
+        enviar_para_chat_web(dst, conteudo)
+        print(f"\n[MENSAGEM] {msg.get('src')} -> {msg.get('dst')}")
+        print(msg.get("payload"))
+        return True
+    

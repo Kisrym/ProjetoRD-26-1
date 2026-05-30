@@ -1,7 +1,7 @@
 from server import message_queue
 from handlers.hello import hello_handler, hello_ok_handler
 from handlers.ping import pong_handler, ping_handler
-from handlers.send import send_handler, ack_handler
+from handlers.send import send_handler, ack_handler, pub_handler
 from handlers.bye import bye_handler, bye_ok_handler
 
 def message_router(connected_peers, name, namespace):
@@ -27,6 +27,9 @@ def message_router(connected_peers, name, namespace):
 
         elif msg_type == "PONG":
             pong_handler(msg)
+
+        elif msg_type == "PUB":
+            pub_handler(msg)
 
         elif msg_type == "SEND":
             send_handler(conn, addr, connected_peers, msg, name, namespace)

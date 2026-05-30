@@ -11,7 +11,8 @@ import uuid
 open_bye={}
 open_ping={}
 open_send={}
-open_hello = {}
+open_hello={}
+grups_online={}
 
 def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
     sock = None
@@ -123,5 +124,16 @@ def keep_alive(connected_peers,name,namespace):
                     else:
                         sock.close()
                         del connected_peers[peer_id]
+        if registrado:
+            for peer_id, peer in connected_peers.items():
+                if "@" not in peer_id:
+                    continue
+
+                name, ns = peer_id.split("@", 1)
+
+                if name not in grups_online.get(ns, []):
+                    grups_online.setdefault(ns, []).append(name)
+
+        time.sleep(5)
                 
 
