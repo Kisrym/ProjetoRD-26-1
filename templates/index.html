@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Terminal P2P</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --wa-bg: #d1d7db; --wa-panel: #ffffff; --wa-header: #f0f2f5; --wa-chat-bg: #efeae2; --wa-sent: #dcf8c6; --wa-border: #d1d7db; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--wa-bg); height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #app { width: 100%; max-width: 1400px; height: 95vh; display: flex; background: var(--wa-panel); box-shadow: 0 1px 1px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        #login-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--wa-bg); z-index: 1000; display: flex; justify-content: center; align-items: center; transition: opacity 0.3s; }
+        .login-box { background: var(--wa-panel); padding: 35px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; }
+        .login-box h3 { margin: 0 0 10px 0; color: #111b21; text-align: center; font-weight: 500; }
+        .login-input { padding: 12px; border: 1px solid var(--wa-border); border-radius: 8px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+        .login-input:focus { border-color: #00a884; }
+        .login-btn { padding: 12px; background: #00a884; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        .login-btn:hover { background: #008f6f; }
+        #sidebar { width: 30%; min-width: 300px; background: var(--wa-panel); border-right: 1px solid var(--wa-border); display: flex; flex-direction: column; }
+        .header { height: 60px; background: var(--wa-header); display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--wa-border); box-sizing: border-box; gap: 15px;}
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #dfe5e7; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; overflow: hidden; }
+        .chat-list-item { padding: 12px 16px; border-bottom: 1px solid #f2f2f2; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
+        .chat-list-item:hover { background: #f5f6f6; }
+        .chat-list-item.active { background: var(--wa-header); }
+        .chat-info { flex: 1; display: flex; flex-direction: column; justify-content: center; margin-left: 15px;}
+        .chat-name { font-weight: 500; font-size: 16px; color: #111b21; margin-bottom: 3px; }
+        .chat-preview { font-size: 13px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #chat-area { flex: 1; display: flex; flex-direction: column; background: var(--wa-chat-bg); position: relative; }
+        #chat-area::before { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); opacity: 0.06; pointer-events: none; z-index: 0; }
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; z-index: 1; }
+        .msg-container { display: flex; width: 100%; margin-bottom: 2px; }
+        .msg-container.sent { justify-content: flex-end; }
+        .msg-container.received { justify-content: flex-start; }
+        .msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 20px; word-wrap: break-word; white-space: pre-wrap; font-family: 'Consolas', 'Courier New', monospace; box-shadow: 0 1px 0.5px rgba(11,20,26,.13); position: relative; }
+        .msg.received { background: #ffffff; border-top-left-radius: 0; color: #111b21; }
+        .msg.sent { background: var(--wa-sent); border-top-right-radius: 0; color: #111b21; }
+        #input-area { min-height: 62px; background: var(--wa-header); display: flex; align-items: center; padding: 10px 16px; gap: 10px; z-index: 1; }
+        #cmd-input { flex: 1; padding: 12px 15px; border: none; border-radius: 8px; outline: none; font-size: 15px; background: #ffffff; box-shadow: 0 1px 1px rgba(0,0,0,0.05); font-family: inherit; }
+        .icon-btn { color: #54656f; font-size: 20px; cursor: pointer; padding: 8px; transition: color 0.2s; }
+        .icon-btn:hover { color: #111b21; }
+        #peer-list { flex: 1; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="login-overlay">
+            <div class="login-box">
+                <h3>Configuração P2P</h3>
+                <input type="text" id="inp-name" class="login-input" placeholder="Seu Nome">
+                <input type="text" id="inp-namespace" class="login-input" placeholder="Namespace">
+                <button onclick="startPeer()" class="login-btn">Conectar</button>
+            </div>
+        </div>
+
+        <div id="sidebar">
+            <div class="header">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+            </div>
+            <div id="peer-list">
+                <div class="chat-list-item active" id="item-Terminal" onclick="switchChat('Terminal')">
+                    <div class="avatar" style="background: #00a884;"><i class="fas fa-terminal"></i></div>
+                    <div class="chat-info">
+                        <div class="chat-name">Terminal Principal</div>
+                        <div class="chat-preview" id="preview-Terminal">Monitorando logs...</div>
+                    </div>
+                </div>
+                <div id="dynamic-peers"></div>
+            </div>
+        </div>
+        
+        <div id="chat-area">
+            <div class="header">
+                <div class="avatar" id="header-avatar" style="background: #00a884;"><i class="fas fa-terminal"></i></div>
+                <div class="chat-info">
+                    <div class="chat-name" id="header-title">Terminal Principal</div>
+                    <div class="chat-preview" id="header-status">Online</div>
+                </div>
+            </div>
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="cmd-input" placeholder="Digite uma mensagem ou comando..." autocomplete="off" autofocus>
+                <i class="fas fa-paper-plane icon-btn" id="send-btn"></i>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const messagesDiv = document.getElementById('messages');
+        const inputField = document.getElementById('cmd-input');
+        const sendBtn = document.getElementById('send-btn');
+        const dynamicPeersDiv = document.getElementById('dynamic-peers');
+        
+        let activeChat = 'Terminal';
+        let chatHistories = { 'Terminal': [] };
+
+        function startPeer() {
+            const name = document.getElementById('inp-name').value;
+            const namespace = document.getElementById('inp-namespace').value;
+            if (name && namespace) {
+                socket.emit('setup_peer', {name: name, namespace: namespace});
+                document.getElementById('login-overlay').style.opacity = '0';
+                setTimeout(() => document.getElementById('login-overlay').style.display = 'none', 300);
+            }
+        }
+
+        function renderMessages() {
+            messagesDiv.innerHTML = '';
+            const history = chatHistories[activeChat] || [];
+            history.forEach(msgObj => {
+                const msgContainer = document.createElement('div');
+                msgContainer.className = 'msg-container ' + msgObj.type;
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'msg ' + msgObj.type;
+                msgDiv.textContent = msgObj.text;
+                msgContainer.appendChild(msgDiv);
+                messagesDiv.appendChild(msgContainer);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function storeMessage(chatId, text, type) {
+            if (!chatHistories[chatId]) chatHistories[chatId] = [];
+            chatHistories[chatId].push({text: text, type: type});
+            const previewEl = document.getElementById('preview-' + chatId);
+            if (previewEl) previewEl.textContent = text;
+            if (activeChat === chatId) renderMessages();
+        }
+
+        socket.on('terminal_output', function(msg) {
+            const linhas = msg.data.split('\n');
+            linhas.forEach(linha => {
+                if (linha.trim() !== '') storeMessage('Terminal', linha, 'received');
+            });
+        });
+
+        socket.on('chat_message', function(data) {
+            storeMessage(data.peer, data.msg, data.type);
+        });
+
+        socket.on('update_peers', function(peers) {
+            dynamicPeersDiv.innerHTML = '';
+            peers.forEach(peer => {
+                if (!chatHistories[peer]) chatHistories[peer] = [];
+                const div = document.createElement('div');
+                div.className = `chat-list-item ${activeChat === peer ? 'active' : ''}`;
+                div.id = 'item-' + peer;
+                div.onclick = () => switchChat(peer);
+                const lastMsg = chatHistories[peer].length > 0 ? chatHistories[peer][chatHistories[peer].length-1].text : 'Novo peer conectado';
+                div.innerHTML = `
+                    <div class="avatar" style="background: #3498db;"><i class="fas fa-user"></i></div>
+                    <div class="chat-info">
+                        <div class="chat-name">${peer}</div>
+                        <div class="chat-preview" id="preview-${peer}">${lastMsg}</div>
+                    </div>
+                `;
+                dynamicPeersDiv.appendChild(div);
+            });
+        });
+
+        function switchChat(chatId) {
+            activeChat = chatId;
+            document.querySelectorAll('.chat-list-item').forEach(el => el.classList.remove('active'));
+            const activeItem = document.getElementById('item-' + chatId);
+            if (activeItem) activeItem.classList.add('active');
+            document.getElementById('header-title').textContent = chatId === 'Terminal' ? 'Terminal Principal' : chatId;
+            document.getElementById('header-avatar').innerHTML = chatId === 'Terminal' ? '<i class="fas fa-terminal"></i>' : '<i class="fas fa-user"></i>';
+            document.getElementById('header-avatar').style.background = chatId === 'Terminal' ? '#00a884' : '#3498db';
+            renderMessages();
+            inputField.focus();
+        }
+
+        function sendCommand() {
+            const text = inputField.value;
+            if (text.trim() !== '') {
+                if (activeChat === 'Terminal') {
+                    storeMessage('Terminal', text, 'sent');
+                    socket.emit('terminal_input', {data: text});
+                } else {
+                    storeMessage(activeChat, text, 'sent');
+                    socket.emit('terminal_input', {data: `@msg ${activeChat} ${text}`});
+                }
+                inputField.value = '';
+            }
+        }
+
+        inputField.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendCommand(); });
+        sendBtn.addEventListener('click', sendCommand);
+    </script>
+</body>
+</html>

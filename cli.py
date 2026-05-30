@@ -1,3 +1,4 @@
+from webapp import terminal_input_queue
 import json
 import socket
 import threading
@@ -47,25 +48,24 @@ def send(peer_id,sock,name,namespace,message):
         open_send.pop(msg_id, None)
 
 def cli_loop(connected_peers,name,namespace):
+    print(f"Sistema P2P pronto. Logado como: {name}@{namespace}")
+    print("Aguardando comandos...")
     while True:
-        cmd = input("Digite um comando (view, exit, send): ").strip().upper()
-        if cmd == "VIEW":
-            print("Peers conectados:")
-            for peer_id, info in connected_peers.items():
-                print(f'{peer_id} - IP: {info["ip"]}, Porta: {info["port"]}, Último ping: {time.ctime(info["last_ping"])}')
-        elif cmd == "EXIT":
+        cmd = terminal_input_queue.get().strip()
+        if not cmd:
+            continue
+        if cmd.startswith("@msg"):
+            partes = cmd.split(" ", 2)
+            if len(partes) == 3:
+                peer_id = partes[1]
+                texto = partes[2]
+                
+                if peer_id in connected_peers:
+                    send(peer_id,connected_peers[peer_id]["sock"],name,namespace,texto)
+            continue
+        if cmd == "sair":
+            print("Encerrando o sistema...")
             break
-        elif cmd == "SEND":
-            print("Peers disponíveis:")
-            for peer_id, info in connected_peers.items():
-                print(f'{peer_id}')
 
-            target = input("Digite o nome do peer de destino (formato name@namespace): ").strip()
-
-            if target not in connected_peers:
-                print("Peer não encontrado.")
-                continue
-
-            message = input("Digite a mensagem a ser enviada: ").strip()
-            send(target,connected_peers[target]["sock"],name,namespace,message)
+        
 

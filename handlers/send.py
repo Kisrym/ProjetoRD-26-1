@@ -1,9 +1,15 @@
 from datetime import datetime, timezone
 from cli import open_send
 import json
-import time
+from webapp import enviar_para_chat_web
 
 def send_handler(conn, addr, connected_peers, msg, name, namespace):
+    remetente = msg.get('src')
+    conteudo = msg.get('payload')
+
+    if remetente and conteudo:
+        enviar_para_chat_web(remetente, conteudo)
+
     print(f"\n[MENSAGEM] {msg.get('src')} -> {msg.get('dst')}")
     print(msg.get("payload"))
 
