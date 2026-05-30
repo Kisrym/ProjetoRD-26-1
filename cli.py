@@ -7,12 +7,9 @@ from server import peer_listener
 
 open_send = {}
 
-def send(peer_ip, peer_port,peer_id,name,namespace,target,message):
-    sock = None
+def send(peer_id,sock,name,namespace,message):
     try:
         msg_id = str(uuid.uuid4())
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((peer_ip, peer_port))
 
         event = threading.Event()
         open_send[msg_id] = event
@@ -25,8 +22,8 @@ def send(peer_ip, peer_port,peer_id,name,namespace,target,message):
         msg = {
             "type": "SEND",
             "msg_id": msg_id,
-            "src": name + "@" + namespace,
-            "dst": target,
+            "src": f"{name}@{namespace}",
+            "dst": peer_id,
             "payload": message,
             "require_ack": True,
             "ttl": 1
@@ -35,20 +32,19 @@ def send(peer_ip, peer_port,peer_id,name,namespace,target,message):
         sock.sendall((json.dumps(msg) + "\n").encode())
 
         if event.wait(timeout=5):
-            open_send.pop(peer_id, None)
-            print(f"Registrado com {peer_ip}:{peer_port}")
+            open_send.pop(msg_id, None)
             return sock
 
-        open_send.pop(peer_id, None)
+        open_send.pop(msg_id, None)
         print("Timeout esperando SEND_OK")
         sock.close()
         return None
     except Exception as e:
-        open_send.pop(peer_id, None)
+        open_send.pop(msg_id, None)
         print("Handshake error:", e)
         return None
     finally:
-        open_send.pop(peer_id, None)
+        open_send.pop(msg_id, None)
 
 def cli_loop(connected_peers,name,namespace):
     while True:
@@ -71,6 +67,5 @@ def cli_loop(connected_peers,name,namespace):
                 continue
 
             message = input("Digite a mensagem a ser enviada: ").strip()
-            peer_info = connected_peers[target]
-            send(peer_info["ip"], peer_info["port"],target,name,namespace,target,message)
+            send(target,connected_peers[target]["sock"],name,namespace,message)
 

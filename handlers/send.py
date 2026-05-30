@@ -25,6 +25,7 @@ def ack_handler(msg):
     event = open_send.get(msg_id)
 
     if event:
+        print(f"Recebido ACK para msg_id: {msg_id}")
         event.set()
         return True
 
