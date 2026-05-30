@@ -24,19 +24,14 @@ def hello_handler(conn, addr, connected_peers, msg, name, namespace):
     print(f"[HELLO] {peer_id} conectado")
     return True
 
-def hello_ok_handler(conn, addr, connected_peers, msg):
+def hello_ok_handler(msg):
     peer_id = msg.get("peer_id")
-    if open_hello.get(peer_id):
-        print(f"{peer_id} confirmou o HELLO.")
-        open_hello.pop(peer_id, None)
-        connected_peers[peer_id] = {
-            "peer_id": peer_id,
-            "ip": addr[0],
-            "port": addr[1],
-            "sock": conn,
-            "last_ping": time.time()
-        }
+
+    event = open_hello.get(peer_id)
+
+    if event:
+        event.set()
         return True
-    else:
-        print(f"{peer_id} respondeu com HELLO_OK sem solicitação prévia.")
+    else:        
+        print(f"Recebido HELLO_OK de {peer_id} sem solicitação prévia.")
         return False

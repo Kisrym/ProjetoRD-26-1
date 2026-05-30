@@ -23,19 +23,12 @@ def ping_handler(conn, addr, connected_peers, msg, name, namespace):
     conn.sendall((json.dumps(response) + "\n").encode())
     return True
 
-def pong_handler(conn, addr, connected_peers, msg):
-    peer_id = msg.get("peer_id")
-    if open_ping.get(peer_id):
-        print(f"{peer_id} confirmou o PING.")
-        open_ping.pop(peer_id, None)
-        connected_peers[peer_id] = {
-            "peer_id": peer_id,
-            "ip": addr[0],
-            "port": addr[1],
-            "sock": conn,
-            "last_ping": time.time()
-        }
+def pong_handler(msg):
+    msg_id = msg.get("msg_id")
+    if msg_id in open_ping:
+        open_ping[msg_id].set()
+        del open_ping[msg_id]
         return True
     else:
-        print(f"{peer_id} respondeu com PONG sem solicitação prévia.")
+        print(f"Recebido PONG sem solicitação prévia.")
         return False

@@ -8,14 +8,13 @@ import time
 import threading
 import uuid
 
-
-
 open_bye={}
 open_ping={}
 open_send={}
 open_hello = {}
 
 def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
+    sock = None
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((peer_ip, peer_port))
@@ -27,7 +26,7 @@ def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
             target=peer_listener,
             args=(sock, peer_id),
             daemon=True
-        ).start()
+        ).start()   
 
         hello_msg = {
             "type": "HELLO",
@@ -43,13 +42,17 @@ def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
             print(f"Registrado com {peer_ip}:{peer_port}")
             return sock
 
+        del open_hello[peer_id]
         print("Timeout esperando HELLO_OK")
         sock.close()
         return None
     
     except Exception as e:
+        del open_hello[peer_id]
         print("Handshake error:", e)
         return None
+    finally:
+        open_hello.pop(peer_id, None)
 
 def ping(sock, peer_id):
     msg_id = str(uuid.uuid4())
