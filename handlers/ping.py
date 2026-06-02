@@ -11,6 +11,7 @@ def ping_handler(conn, addr, connected_peers, msg, name, namespace):
         "ttl": 1
     }
     conn.sendall((json.dumps(response) + "\n").encode())
+    print(f"Respondido PING de {addr}")
     return True
 
 def pong_handler(msg):

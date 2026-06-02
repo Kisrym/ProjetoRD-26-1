@@ -5,7 +5,7 @@ from router import message_router
 from server import servidor
 from cli import cli_loop
 import threading
-
+from config import PEER_PORT
 # Dicionário de estado compartilhado
 connected_peers = {}
 
@@ -27,7 +27,7 @@ web_thread.start()
 print("=> Acesse http://localhost:5000 no navegador para configurar o Nome e Namespace.")
 
 config_ready.wait()
-
+pport = PEER_PORT
 name = peer_config['name']
 namespace = peer_config['namespace']
 peer_id = f"{name}@{namespace}"
@@ -35,7 +35,7 @@ print(f"=> Iniciando sistema como {peer_id}")
 
 server_thread = threading.Thread(
     target=servidor,
-    args=(),
+    args=(pport,),
     daemon=True
 )
 server_thread.start()
