@@ -15,7 +15,6 @@ open_hello={}
 grups_online={}
 
 def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
-    sock = None
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((peer_ip, peer_port))
@@ -37,7 +36,7 @@ def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
             "ttl": 1
         }
         sock.sendall((json.dumps(hello_msg) + "\n").encode())
-
+        print(f"Enviado HELLO para {peer_id} em {peer_ip}:{peer_port}")
         if event.wait(timeout=2):
             open_hello.pop(peer_id, None)
             print(f"Registrado com {peer_ip}:{peer_port}")

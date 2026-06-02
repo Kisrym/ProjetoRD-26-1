@@ -1,6 +1,5 @@
 {
   "host": "rdv.mfcaetano.cc",
   "port": 8080,
-  "peer_port": 9999,
-  "server_port": 4000
+  "peer_port": 9999
 }
