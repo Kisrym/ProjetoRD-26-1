@@ -55,6 +55,8 @@ def discorver_handler(namespace=None):
         peers = discover(namespace)
         if peers:
             print("Peers encontrados:")
+            for peer in peers:
+                print(f"- {peer['name']}@{peer['namespace']}:{peer['port']}")
             return peers
         else:
             contador += 1

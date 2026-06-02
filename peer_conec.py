@@ -38,7 +38,7 @@ def hand_shake(peer_ip, peer_port,peer_id,name,namespace):
         }
         sock.sendall((json.dumps(hello_msg) + "\n").encode())
 
-        if event.wait(timeout=5):
+        if event.wait(timeout=2):
             open_hello.pop(peer_id, None)
             print(f"Registrado com {peer_ip}:{peer_port}")
             return sock
@@ -68,7 +68,7 @@ def ping(sock, peer_id):
         }
         sock.sendall((json.dumps(ping_msg) + "\n").encode())
 
-        if event.wait(timeout=5):
+        if event.wait(timeout=2):
             del open_ping[msg_id]
             return True
         
@@ -100,13 +100,14 @@ def keep_alive(connected_peers,name,namespace):
                 registrado = False
                 continue
             for peer in peers:
-                if peer["ip"] == MEU_IP:
-                    continue
+                #if peer["ip"] == MEU_IP:
+                #    continue
                 peer_id = f'{peer["name"]}@{peer["namespace"]}'
                 if peer_id not in connected_peers:
                     print(f"Descobrindo {peer_id} em {peer['ip']}:{peer['port']}...")
                     sock = hand_shake(peer["ip"], peer["port"],peer_id,name,namespace)
                     if sock:
+                        print(f"Conectado a {peer_id}")
                         connected_peers[peer_id] = {
                             "peer_id": peer_id,
                             "ip": peer["ip"],
