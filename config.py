@@ -6,3 +6,4 @@ with open("config.json", "r") as f:
 HOST = config["host"]
 PORT = config["port"]
 PEER_PORT = config["peer_port"]
+WEBAPP_PORT = config["webapp_port"]

@@ -23,7 +23,7 @@ def message_router(connected_peers, name, namespace):
             hello_ok_handler(msg)
 
         elif msg_type == "PING":
-            ping_handler(conn, addr, connected_peers, msg, name, namespace)
+            ping_handler(conn, addr, msg)
 
         elif msg_type == "PONG":
             pong_handler(msg)
@@ -32,7 +32,7 @@ def message_router(connected_peers, name, namespace):
             pub_handler(msg)
 
         elif msg_type == "SEND":
-            send_handler(conn, addr, connected_peers, msg, name, namespace)
+            send_handler(conn,msg)
 
         elif msg_type == "ACK":
             ack_handler(msg)

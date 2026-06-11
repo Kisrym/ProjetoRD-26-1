@@ -1,5 +1,6 @@
 {
   "host": "rdv.mfcaetano.cc",
   "port": 8080,
-  "peer_port": 9999
+  "peer_port": 9999,
+  "webapp_port": 5000
 }
