@@ -57,13 +57,13 @@ def discorver_handler(namespace=None):
             print("Peers encontrados:")
             for peer in peers:
                 print(f"- {peer['name']}@{peer['namespace']}:{peer['port']}")
-            return peers
+            return peers, 0
         else:
             contador += 1
             print(f"Tentativa {contador} de descoberta falhou. Tentando novamente em 5 segundos...")
             time.sleep(5)
     print("Falha ao descobrir peers após 3 tentativas.")
-    return []
+    return [], 1
 
 def discover(namespace=None):
     Rendezvous = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

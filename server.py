@@ -5,6 +5,12 @@ from queue import Queue
 
 message_queue = Queue()
 
+open_bye={}
+open_ping={}
+open_send={}
+open_hello={}
+
+
 def peer_listener(conn, addr):
     buffer = ""
 

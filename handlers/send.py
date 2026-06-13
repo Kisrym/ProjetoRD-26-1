@@ -3,7 +3,7 @@ from cli import open_send
 import json
 from webapp import enviar_para_chat_web
 
-def send_handler(conn, addr, connected_peers, msg, name, namespace):
+def send_handler(conn, msg):
     remetente = msg.get('src')
     conteudo = msg.get('payload')
 
