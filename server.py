@@ -1,25 +1,25 @@
-import socket
+import asyncio
 import json
-import threading
-from queue import Queue
 
-message_queue = Queue()
+message_queue = asyncio.Queue() # a queue nativa é bloqueante
 
-open_bye={}
-open_ping={}
-open_send={}
-open_hello={}
+open_bye = {}
+open_ping = {}
+open_send = {}
+open_hello = {}
 
-
-def peer_listener(conn, addr):
+async def peer_listener(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, addr):
+    """
+    Escuta mensagens de um peer específico usando Streams assíncronas.
+    """
     buffer = ""
-
     try:
         while True:
-            data = conn.recv(4096).decode()
-            if not data:
-                break
+            data_bytes = await reader.read(4096)
+            if not data_bytes:
+                break # conexão pedida pelo peer
 
+            data = data_bytes.decode()
             buffer += data
 
             while "\n" in buffer:
@@ -28,36 +28,43 @@ def peer_listener(conn, addr):
                 if not line.strip():
                     continue
 
-                msg = json.loads(line)
-
-                message_queue.put({
-                    "conn": conn,
-                    "addr": addr,
-                    "msg": msg
-                })
+                try:
+                    msg = json.loads(line)
+                    
+                    await message_queue.put({
+                        "writer": writer, # funciona como o conn do socket
+                        "addr": addr,
+                        "msg": msg
+                    })
+                except json.JSONDecodeError:
+                    print(f"[SERVIDOR] Erro ao decodificar JSON de {addr}")
 
     except Exception as e:
-        print("Erro listener:", e)
+        print(f"[SERVIDOR] Erro no listener do peer {addr}: {e}")
 
     finally:
-        conn.close()
+        print(f"[SERVIDOR] Conexão encerrada com {addr}")
+        writer.close()
+        await writer.wait_closed()
 
-def servidor(port,host="0.0.0.0"):
-    print(f"[SERVIDOR] escutando em {host}:{port}")
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind((host, port))
-    server.listen()
-    print(f"[SERVIDOR] escutando em {host}:{port}")
 
-    while True:
+async def servidor(port, host="0.0.0.0"):
+    """
+    Inicia o servidor TCP assíncrono.
+    """
+    print(f"[SERVIDOR] Iniciando em {host}:{port}...")
 
-        conn, addr = server.accept()
-        print(f"[NOVA CONEXÃO] {addr}")
-        listener_thread = threading.Thread(
-            target=peer_listener,
-            args=(conn, addr),
-            daemon=True
-        )
+    async def handle_client(reader, writer):
+        addr = writer.get_extra_info('peername')
+        print(f"[NOVA CONEXÃO ASSÍNCRONA] {addr}")
+        
+        # cria uma task em background para escutar o cliente novo
+        asyncio.create_task(peer_listener(reader, writer, addr))
 
-        listener_thread.start()
+    server = await asyncio.start_server(handle_client, host, port)
+
+    print(f"[SERVIDOR] Escutando em {host}:{port}")
+
+    # roda até ser interrompido
+    async with server:
+        await server.serve_forever()

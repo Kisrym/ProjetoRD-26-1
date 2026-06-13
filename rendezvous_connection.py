@@ -1,96 +1,154 @@
-import socket
+import asyncio
 import json
-import time
-from config import HOST, PORT
+from config import *
 
-def register_handler(name, namespace, peer_port):
+
+async def register_handler(name, namespace, peer_port):
+    """
+    Tenta registrar o peer no servidor Rendezvous até 3 vezes com espaçamento assíncrono.
+    """
     contador = 0
-    while contador < 3:
-        if register(name, namespace, peer_port) == 1:
+    while contador < RDZV_RECONNECT_TRIES:
+        status = await register(name, namespace, peer_port)
+        if status == 1:
             return True
+        
         else:
             contador += 1
-            print(f"Tentativa {contador} de registro falhou. Tentando novamente em 5 segundos...")
-            time.sleep(5)
-    print("Falha ao registrar o peer após 3 tentativas.")
+            print(f"[RENDEZVOUS] Tentativa {contador}/{RDZV_RECONNECT_TRIES} de registro falhou. Tentando novamente em 5 segundos...")
+            await asyncio.sleep(5)
+            
+    print(f"[RENDEZVOUS] Falha ao registrar o peer após {RDZV_RECONNECT_TRIES} tentativas.")
+    return False
 
 
-def register(name, namespace, peer_port, ttl=3600):
-    Rendezvous = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    Rendezvous.connect((HOST, PORT))
-    msg = {
-        "type": "REGISTER",
-        "namespace": namespace,
-        "name": name,
-        "port": peer_port,
-        "ttl": ttl
-    }
-    Rendezvous.sendall((json.dumps(msg) + "\n").encode())
-    response = Rendezvous.recv(4096)
-    print("Resposta do servidor:", response.decode())
-    data = json.loads(response)
-    if data["status"] == "ERROR":
-        if data["message"] == "bad_name":
-            print("Nome Invalido. deve conter entre 1 e 63 caracteres")
-        elif data["message"] == "bad_namespace":
-            print("Namespace Invalido. deve conter entre 1 e 63 caracteres.")
-        elif data["message"] == "bad_ttl":
-            print("TTL Invalido. deve ser um inteiro entre 1 e 86400.")
-        elif data["message"] == "bad_port":
-            print("Porta Invalida. deve ser um inteiro entre 1 e 65535.")
-        Rendezvous.close()
+async def register(name, namespace, peer_port, ttl=3600):
+    """
+    Abre uma conexão temporária, envia o comando REGISTER e trata a resposta.
+    """
+    try:
+        reader, writer = await asyncio.open_connection(HOST, PORT)
+        
+        msg = {
+            "type": "REGISTER",
+            "namespace": namespace,
+            "name": name,
+            "port": peer_port,
+            "ttl": ttl
+        }
+        
+        writer.write((json.dumps(msg) + "\n").encode())
+        await writer.drain()
+        
+        response_bytes = await reader.read(4096)
+        if not response_bytes:
+            print("[RENDEZVOUS] Servidor fechou a conexão sem responder.")
+            return 0
+            
+        response = response_bytes.decode()
+        print("[RENDEZVOUS] Resposta do servidor:", response)
+        data = json.loads(response)
+        
+        writer.close()
+        await writer.wait_closed()
+        
+        if data.get("status") == "ERROR":
+            msg_err = data.get("message")
+
+            if msg_err == "bad_name":
+                print("[RENDEZVOUS] Nome Inválido. Deve conter entre 1 e 63 caracteres.")
+
+            elif msg_err == "bad_namespace":
+                print("[RENDEZVOUS] Namespace Inválivdo. Deve conter entre 1 e 63 caracteres.")
+
+            elif msg_err == "bad_ttl":
+                print("[RENDEZVOUS] TTL Inválido. Deve ser um inteiro entre 1 e 86400.")
+
+            elif msg_err == "bad_port":
+                print("[RENDEZVOUS] Porta Inválida. Deve ser um inteiro entre 1 e 65535.")
+
+            return 0
+            
+        elif data.get("status") == "OK":     
+            print("[RENDEZVOUS] Registrado com sucesso!")
+            return 1
+        
+        else:
+            print("[RENDEZVOUS] Resposta desconhecida do servidor.")
+            return 0
+
+    except Exception as e:
+        print(f"[RENDEZVOUS] Erro de conexão ao registrar: {e}")
         return 0
-    elif data["status"] == "OK":     
-        print("Registrado com sucesso!")
-        Rendezvous.close()
-        return 1
-    else:
-        print("Resposta desconhecida do servidor.")
-        Rendezvous.close()
-        return 0
 
-def discorver_handler(namespace=None):
+
+async def discorver_handler(namespace=None):
+    """
+    Tenta descobrir peers no servidor Rendezvous até 3 vezes.
+    """
     contador = 0
-    while contador < 3:
-        peers = discover(namespace)
+    while contador < RDZV_DISCOVER_TRIES:
+        peers = await discover(namespace)
+
         if peers:
-            print("Peers encontrados:")
+            print("[RENDEZVOUS] Peers encontrados:")
+
             for peer in peers:
-                print(f"- {peer['name']}@{peer['namespace']}:{peer['port']}")
+                print(f" - {peer['name']}@{peer['namespace']}:{peer['port']}")
+
             return peers, 0
+        
         else:
             contador += 1
-            print(f"Tentativa {contador} de descoberta falhou. Tentando novamente em 5 segundos...")
-            time.sleep(5)
-    print("Falha ao descobrir peers após 3 tentativas.")
+            print(f"[RENDEZVOUS] Tentativa {contador}/{RDZV_DISCOVER_TRIES} de descoberta falhou. Tentando novamente em 5 segundos...")
+            await asyncio.sleep(5)
+            
+    print("[RENDEZVOUS] Falha ao descobrir peers após 3 tentativas.")
     return [], 1
 
-def discover(namespace=None):
-    Rendezvous = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    Rendezvous.connect((HOST, PORT))
-    msg = {
-        "type": "DISCOVER"
-    }
 
-    if namespace is not None:
-        msg["namespace"] = namespace
+async def discover(namespace=None):
+    """
+    Abre uma conexão temporária, envia o comando DISCOVER e extrai a lista de peers.
+    """
+    try:
+        reader, writer = await asyncio.open_connection(HOST, PORT)
+        
+        msg = {"type": "DISCOVER"}
+        if namespace is not None:
+            msg["namespace"] = namespace
 
-    Rendezvous.sendall((json.dumps(msg) + "\n").encode())
+        writer.write((json.dumps(msg) + "\n").encode())
+        await writer.drain()
 
-    response = Rendezvous.recv(4096).decode()
-    data = json.loads(response)
+        response_bytes = await reader.read(4096)
+        if not response_bytes:
+            return []
+            
+        response = response_bytes.decode()
+        data = json.loads(response)
 
-    if data["status"] == "ERROR":
-        if data["message"] == "bad_namespace":
-            print("Namespace Invalido. deve conter entre 1 e 63 caracteres.")
-        if data["message"] == "peer_not_registered":
-            print("Peer não registrado.")
-        return []
+        writer.close()
+        await writer.wait_closed()
 
-    elif data["status"] == "OK":
-        peers = data["peers"]
-        return peers
+        if data.get("status") == "ERROR":
+            msg_err = data.get("message")
 
-    else:
-        print("Resposta desconhecida do servidor.")
+            if msg_err == "bad_namespace":
+                print("[RENDEZVOUS] Namespace Inválido. Deve conter entre 1 e 63 caracteres.")
+
+            if msg_err == "peer_not_registered":
+                print("[RENDEZVOUS] Peer não registrado.")
+
+            return []
+
+        elif data.get("status") == "OK":
+            return data.get("peers", [])
+        
+        else:
+            print("[RENDEZVOUS] Resposta desconhecida do servidor.")
+            return []
+            
+    except Exception as e:
+        print(f"[RENDEZVOUS] Erro de conexão ao descobrir peers: {e}")
         return []

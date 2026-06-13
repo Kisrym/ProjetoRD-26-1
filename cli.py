@@ -1,19 +1,21 @@
+import asyncio
+from datetime import datetime, timezone
+import json
+import uuid
+
 from webapp import terminal_input_queue
 from peer_conec import grups_online
-import json
-import socket
-import threading
-import time
-import uuid
-from server import peer_listener
+from server import open_send
 
-open_send = {}
-
-def pub (connected_peers,name,namespace,dst,message):
+async def pub(connected_peers, name, namespace, dst, message):
+    """
+    Envia uma mensagem de broadcast (PUB) para todos os peers de um grupo específico.
+    """
     try:
         if dst not in grups_online:
             print(f"[Log] Nenhum peer registrado no grupo {dst}")
             return
+            
         msg_id = str(uuid.uuid4())
         msg = {
             "type": "PUB",
@@ -24,25 +26,39 @@ def pub (connected_peers,name,namespace,dst,message):
             "require_ack": False,
             "ttl": 1
         }
+        
+        tasks = []
         for peer_id in grups_online.get(dst, []):
             if peer_id in connected_peers:
-                sock = connected_peers[peer_id]["sock"]
-                sock.sendall((json.dumps(msg) + "\n").encode())
+                writer = connected_peers[peer_id]["writer"]
+                
+                async def send_payload(w, payload):
+                    try:
+                        w.write(payload)
+                        await w.drain()
+
+                    except Exception:
+                        pass
+
+                payload_bytes = (json.dumps(msg) + "\n").encode()
+                tasks.append(send_payload(writer, payload_bytes)) # armazena a função para mandar a mensagem para todos os peers conectados de uma vez
+        
+        if tasks:
+            await asyncio.gather(*tasks) # bota em prática a função
+            
     except Exception as e:
         print("Erro ao enviar mensagem PUB:", e)
 
-def send(peer_id,sock,name,namespace,message):
-    try:
-        msg_id = str(uuid.uuid4())
 
-        event = threading.Event()
+async def send(peer_id, writer: asyncio.StreamWriter, name, namespace, message):
+    """
+    Envia uma mensagem direta (SEND) para um peer e aguarda o ACK assíncronamente.
+    """
+    msg_id = str(uuid.uuid4())
+    try:
+        event = asyncio.Event()
         open_send[msg_id] = event
 
-        threading.Thread(
-            target=peer_listener,
-            args=(sock, peer_id),
-            daemon=True
-        ).start()   
         msg = {
             "type": "SEND",
             "msg_id": msg_id,
@@ -53,84 +69,83 @@ def send(peer_id,sock,name,namespace,message):
             "ttl": 1
         }
 
-        sock.sendall((json.dumps(msg) + "\n").encode())
+        writer.write((json.dumps(msg) + "\n").encode())
+        await writer.drain()
 
-        if event.wait(timeout=5):
-            open_send.pop(msg_id, None)
-            return sock
-
-        open_send.pop(msg_id, None)
-        print("Timeout esperando SEND_OK")
-        sock.close()
-        return None
+        try:
+            await asyncio.wait_for(event.wait(), timeout=5.0)
+            return True
+            
+        except asyncio.TimeoutError:
+            print(f"[CLI] Timeout esperando ACK da mensagem {msg_id}")
+            return False
+            
     except Exception as e:
-        open_send.pop(msg_id, None)
-        print("Handshake error:", e)
-        return None
+        print(f"[CLI] Erro no envio para {peer_id}: {e}")
+        return False
+    
     finally:
         open_send.pop(msg_id, None)
 
-def cli_loop(connected_peers,name,namespace):
+
+async def cli_loop(connected_peers, name, namespace):
+    """
+    Loop principal de comandos que consome a fila de inputs de forma não bloqueante.
+    """
     print(f"Sistema P2P pronto. Logado como: {name}@{namespace}")
-    print("Aguardando comandos...")
+    
     while True:
-        cmd = terminal_input_queue.get().strip()
+        cmd = await terminal_input_queue.get()
+        cmd = cmd.strip()
+
         if not cmd:
             continue
-        if cmd.startswith("@msg"):
+            
+        if cmd.startswith("@msg") or cmd.startswith("/msg"):
             partes = cmd.split(" ", 2)
             if len(partes) == 3:
                 peer_id = partes[1]
                 texto = partes[2]
                 
                 if peer_id in connected_peers:
-                    send(peer_id,connected_peers[peer_id]["sock"],name,namespace,texto)
+                    await send(peer_id, connected_peers[peer_id]["writer"], name, namespace, texto)
+
             continue
-        elif cmd.startswith("@group_msg"):
+            
+        elif cmd.startswith("@group_msg") or cmd.startswith("/pub"):
             partes = cmd.split(" ", 2)
+
             if len(partes) == 3:
-                alvo_namespace = partes[1]
+                dst_namespace = partes[1]
                 texto = partes[2]
-                pub(connected_peers,name,namespace,alvo_namespace,texto)
-                print(f"[Log] Enviando para GRUPO {alvo_namespace}: {texto}")
+                await pub(connected_peers, name, namespace, dst_namespace, texto)
+                print(f"[Log] Enviando para GRUPO {dst_namespace}: {texto}")
+                
             continue
+            
         elif cmd.startswith("/peers"):
             print("Peers conectados:")
             for pid in connected_peers:
-                print(f" - {pid}")  
+                print(f" - {pid}")
+
             continue
-        elif cmd.startswith("/msg"):
-            partes = cmd.split(" ", 2)
-            if len(partes) == 3:
-                peer_id = partes[1]
-                texto = partes[2]
-                
-                if peer_id in connected_peers:
-                    send(peer_id,connected_peers[peer_id]["sock"],name,namespace,texto)
-            continue
-        elif cmd.startswith("/pub"):
-            partes = cmd.split(" ", 2)
-            if len(partes) == 3:
-                dst = partes[1]
-                texto = partes[2]
-                pub(connected_peers,name,namespace,dst,texto)
-        elif cmd.startswith("/conn"):
+            
+        elif cmd.startswith("/conn"): # REFAZER, N É ISSO QUE ESSA FUNÇÃO DEVERIA FAZER. VIDE https://github.com/mfcaetano/pyp2p-rdv/blob/main/src/docs/RC202502%20-%20PyP2p%20-%20Especificacao%20Trabalho.md#interface-de-usu%C3%A1rio-cli
             for peer_id in connected_peers:
-                print(f"Conectado a {peer_id} - Último ping: {connected_peers[peer_id].get('last_ping', 'N/A')} ms")
+                print(f"Conectado a {peer_id} - Último ping: {connected_peers[peer_id].get('last_ping', 'N/A')}")
             continue
-        elif cmd.startswith("/rtt"):
-            print("Calculando RTT para peers conectados...")
-            continue
+            
         elif cmd.startswith("/reconnect"):
-            for peer in connected_peers:
-                peer["last_ping"] = 0
-            print("Forçando reconexão com todos os peers...")
-        elif cmd.startswith("/log"):
-            print("Exibindo logs recentes...")
+            for peer_id in connected_peers:
+                connected_peers[peer_id]["last_ping"] = 0
+            print("Forçando reconexão com todos os peers (zerando timestamps de keep-alive)...")
+            
             continue
+            
+        elif cmd.startswith("/rtt") or cmd.startswith("/log"):
+            print("Funcionalidade em desenvolvimento ou exibindo logs...")
+            continue
+            
         if cmd == "quit":
             print("Encerrando o sistema...")
             break
-
-        
-

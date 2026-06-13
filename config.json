@@ -2,5 +2,8 @@
   "host": "rdv.mfcaetano.cc",
   "port": 8080,
   "peer_port": 9999,
-  "webapp_port": 5000
+  "webapp_port": 5000,
+  "max_peer_reconnect_attempts": 5,
+  "max_rdzv_reconnect_attempts" : 3,
+  "max_rdzv_discover_attempts" : 3
 }

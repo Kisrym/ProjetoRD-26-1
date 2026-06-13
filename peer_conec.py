@@ -1,12 +1,16 @@
-from handlers.ping import send_ping_handler
-from rendezvous_connection import discorver_handler, register_handler
-from handlers.hello import cadastrar_peers
-from config import PEER_PORT
+import asyncio
 import time
-grups_online={}
+
+from handlers.ping import *
+from rendezvous_connection import *
+from handlers.hello import *
+from config import PEER_PORT
+
+grups_online = {}
+
 def add_grups(connected_peers):
-    for peer_id in connected_peers.items():
-        if "@" not in peer_id:
+    for peer_id, _ in connected_peers.items():
+        if "@" not in peer_id: # ?
             continue
 
         name, ns = peer_id.split("@", 1)
@@ -14,34 +18,51 @@ def add_grups(connected_peers):
         if name not in grups_online.get(ns, []):
             grups_online.setdefault(ns, []).append(name)
 
-def keep_alive(connected_peers,name,namespace):
+
+async def keep_alive(connected_peers, name, namespace):
     timer = 0
     while True:
-        if time.time() - timer >= 30:
+        if time.time() - timer >= 30: # a cada 30 segundos, atualiza a lista de peers no servidor
             timer = time.time()
-            peers, err = discorver_handler()
-            if err:
-                print("Erro ao descobrir peers:", err)
-                return 1
-            cadastrar_peers(peers, connected_peers,name,namespace)
+            
+            peers, err = await discorver_handler()
 
-        send_ping_handler(connected_peers, name)
+            if err:
+                print("[KEEP-ALIVE] Erro ao descobrir peers:", err)
+                return 1
+            
+            await cadastrar_peers(peers, connected_peers, name, namespace)
+
+
+        await send_ping_handler(connected_peers, name)
         
         add_grups(connected_peers)
 
-        time.sleep(1)
-                
+        await asyncio.sleep(1)
 
-def peer_connection(connected_peers,name, namespace):
-    Registered = False
+
+async def peer_connection(connected_peers, name, namespace):
+    """
+    Controla o ciclo de vida do registro no servidor Rendezvous.
+    """
+    registered = False
     while True:
-        if not Registered:
-            if register_handler(name, namespace, PEER_PORT):
-                Registered = True
+        if not registered:
+            print("[CONEXÃO] Tentando registrar no servidor Rendezvous...")
+            
+            success = await register_handler(name, namespace, PEER_PORT)
+
+            if success:
+                registered = True
+                print("[CONEXÃO] Registrado com sucesso!")
             else:
-                return
-        if Registered:
-            erro = keep_alive(connected_peers,name, namespace)
+                print("[CONEXÃO] Falha ao registrar. Tentando novamente em 5 segundos...")
+                await asyncio.sleep(5)
+                continue
+
+        if registered:
+            erro = await keep_alive(connected_peers, name, namespace)
             if erro == 1:
-                Registered = False
-                print("Erro no keep-alive, tentando registrar novamente...")
+                registered = False
+                print("[CONEXÃO] Erro no keep-alive, tentando registrar novamente...")
+                await asyncio.sleep(2)
