@@ -64,6 +64,9 @@ async def cadastrar_peers(peers, connected_peers, name, namespace):
         if peer_id == f"{name}@{namespace}":
             continue
 
+        if peer in connected_peers: # se ja esta conectado
+            continue
+
         if peer_id not in connected_peers:
             print(f"[CADASTRO] Descobrindo {peer_id} em {peer['ip']}:{peer['port']}...")
             

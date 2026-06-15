@@ -82,6 +82,33 @@ async def register(name, namespace, peer_port, ttl=3600):
         return 0
 
 
+async def unregister(name, namespace, port):
+    command = {
+        "name" : name,
+        "type" : "UNREGISTER",
+        "namespace" : namespace,
+        "port" : port
+    }
+
+    reader, writer = await asyncio.open_connection(HOST, PORT)
+
+    try:
+        payload = (json.dumps(command) + "\n").encode('utf-8')
+        writer.write(payload)
+        await writer.drain() # da flush no buffer de write; na pratica, espera os dados entrarem na rede de fato
+
+        response = await reader.readline()
+
+        return json.loads(response.decode("utf-8"))
+    
+    except Exception as e:
+        print("[UNREGISTER] Erro ao retirar registro:", e)
+        return None
+    
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
 async def discorver_handler(namespace=None):
     """
     Tenta descobrir peers no servidor Rendezvous até 3 vezes.

@@ -138,3 +138,56 @@ async def try_to_reconnect(peer_id, ip, port, connected_peers, name, namespace):
 
     print(f"[RECONEXÃO] Esgotadas as {PEER_RECONNECT_TRIES} tentativas.")
     return False
+
+async def close_all_connections(connected_peers, name, namespace):
+    print("\n[QUIT] Iniciando encerramento...")
+
+    bye_msg = {
+        "type": "BYE",
+        "msg_id": str(uuid.uuid4()),
+        "src": f"{name}@{namespace}",
+        "ttl": 1
+    }
+    payload_bytes = (json.dumps(bye_msg) + "\n").encode()
+
+    tasks = []
+    peers_ativos = list(connected_peers.items())
+    
+    if peers_ativos:
+        print(f"[QUIT] Avisando {len(peers_ativos)} peers sobre a saida")
+        
+        for peer_id, dados in peers_ativos:
+            writer = dados.get("writer")
+            
+            async def send_bye_and_close(w, pid):
+                try:
+                    w.write(payload_bytes)
+                    await w.drain()
+                    w.close()
+                    await w.wait_closed()
+                    print(f"[QUIT] Conexão com {pid} encerrada com sucesso.")
+
+                except Exception:
+                    pass
+
+            tasks.append(send_bye_and_close(writer, peer_id))
+        
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    connected_peers.clear()
+
+    try:
+        success = await unregister(name, namespace, PEER_PORT)
+
+        if success:
+            print("[QUIT] Desregistrado do servidor Rendezvous com sucesso.")
+        else:
+            print("[QUIT] Falha ao desregistrar do servidor Rendezvous.")
+            
+    except NameError:
+        print("[QUIT] Alerta: unregister_handler não encontrado. Pulando desregistro central.")
+
+    except Exception as e:
+        print(f"[QUIT] Erro ao comunicar saída para o Rendezvous: {e}")
+
+    print("[QUIT] Sistema P2P finalizado de forma limpa.")

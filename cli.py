@@ -5,7 +5,7 @@ import uuid
 import sys
 
 from webapp import terminal_input_queue
-from peer_conec import grups_online
+from peer_conec import grups_online, close_all_connections
 from server import open_send
 
 async def pub(connected_peers, name, namespace, dst, message):
@@ -156,10 +156,21 @@ async def cli_loop(connected_peers, name, namespace):
         if cmd.startswith("/quit"):
             print("Encerrando o sistema...")
 
-            # FAZER A LIMPA (tirar as tasks do asyncio, loops, encerrar bgl da memoria, etc)
-            # ENVIAR BYE para todos os peers conectados
-            # UNREGISTER no servidor rendezvous
-            # ai sim, sair com exit(0)
-
-            sys.exit(0)
-            break
+            try:
+                await close_all_connections(connected_peers, name, namespace)
+                
+                current_task = asyncio.current_task()
+                all_tasks = [t for t in asyncio.all_tasks() if t is not current_task]
+                
+                if all_tasks:
+                    print(f"[QUIT] Cancelando {len(all_tasks)} tarefas secundárias pendentes...")
+                    for task in all_tasks:
+                        task.cancel()
+                    
+                    await asyncio.gather(*all_tasks, return_exceptions=True)
+                    
+            except Exception as e:
+                print(f"Erro durante o encerramento das conexões: {e}")
+            finally:
+                print("[QUIT] Processo finalizado com sucesso.")
+                sys.exit(0)

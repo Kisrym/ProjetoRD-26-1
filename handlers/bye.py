@@ -51,7 +51,13 @@ async def bye_handler(writer: asyncio.StreamWriter, bye_received: dict, connecte
     except Exception: pass
 
     print(f"[CONEXÃO] Peer {peer_id} se despediu (BYE)")
-    connected_peers.pop(peer_id, None)
+    dados = connected_peers.pop(peer_id, None)
+
+    if dados:
+        try:
+            dados["writer"].close()
+        except: pass
+        
 
 async def bye_ok_handler(msg_received: dict):
     print(f"[CONEXÃO] Confirmação de BYE_OK recebida de {msg_received.get("peer_id")}")
