@@ -168,7 +168,19 @@
 
         // Modificado para aceitar o tipo (Peer ou Group) do backend
         socket.on('chat_message', function(data) {
-            storeMessage(data.target_id, data.msg, data.type);
+            let idDst = data.target_id;
+
+            if (idDst === '*' || idDst.startsWith('#')) {
+                const namespace = idDst.replace("#", "")
+
+                idDst = 'group_' + namespace;
+
+                if (!chatHistories[idDst]) {
+                    chatHistories[idDst] = []
+                }
+            }
+
+            storeMessage(idDst, data.msg, data.type);
         });
 
         socket.on('update_peers', function(peers) {
@@ -263,10 +275,10 @@
                 } else if (activeChatType === 'Group') {
                     // Tira o prefixo 'group_' para mandar só o namespace pro Python
                     const ns = activeChatId.replace('group_', '');
-                    socket.emit('terminal_input', {data: `@group_msg ${ns} ${text}`});
+                    socket.emit('terminal_input', {data: `/pub #${ns} ${text}`});
                 } else {
                     // É um Peer normal
-                    socket.emit('terminal_input', {data: `@msg ${activeChatId} ${text}`});
+                    socket.emit('terminal_input', {data: `/msg ${activeChatId} ${text}`});
                 }
                 inputField.value = '';
             }
