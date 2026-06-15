@@ -27,7 +27,17 @@ async def pub(connected_peers, name, namespace, dst, message):
         }
         
         tasks = []
-        for peer_id in grups_online.get(dst, []):
+        lista_peers = []
+
+        if dst == '*':
+            for sublista in grups_online.values():
+                for peer_id in sublista:
+                    if peer_id not in lista_peers:
+                        lista_peers.append(peer_id)
+        else:
+            lista_peers = grups_online.get(dst, [])
+
+        for peer_id in lista_peers:
             if peer_id in connected_peers:
                 writer = connected_peers[peer_id]["writer"]
                 

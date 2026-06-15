@@ -45,13 +45,17 @@ sys.stderr = WebTerminalOut(sys.stderr)
 
 async def monitor_peers():
     """Tarefa assíncrona de monitoramento executada no loop principal."""
-    last_peers = []
+    last_state = None
     print("[WEBAPP] Monitor de peers iniciado.")
     while True:
         current_peers = list(connected_peers.keys())
-        if current_peers != last_peers:
-            await sio.emit('update_peers', current_peers, namespace='/')
-            last_peers = current_peers.copy()
+        namespace = peer_config.get('namespace', '')
+
+        current_state = (current_peers, namespace)
+
+        if current_state != last_state:
+            await sio.emit('update_peers', {'peers' : current_peers, 'meu_namespace' : namespace}, namespace='/')
+            last_state = current_state
         await asyncio.sleep(2)
 
 

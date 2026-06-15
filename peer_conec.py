@@ -15,8 +15,8 @@ def add_grups(connected_peers):
 
         name, ns = peer_id.split("@", 1)
 
-        if peer_id not in grups_online.get(ns, []):
-            grups_online.setdefault(ns, []).append(peer_id)
+        if peer_id not in grups_online.get(f"#{ns}", []):
+            grups_online.setdefault(f"#{ns}", []).append(peer_id)
 
 
 async def keep_alive(connected_peers, name, namespace):

@@ -183,7 +183,7 @@
             storeMessage(idDst, data.msg, data.type);
         });
 
-        socket.on('update_peers', function(peers) {
+        socket.on('update_peers', function(data) {
             const dynamicPeersDiv = document.getElementById('dynamic-peers');
             const dynamicGroupsDiv = document.getElementById('dynamic-groups');
             
@@ -192,8 +192,12 @@
             
             let namespaces = new Set();
 
+            if (data.meu_namespace) {
+                namespaces.add(data.meu_namespace);
+            }
+
+            const peers = data.peers || [];
             peers.forEach(peer => {
-                // Separa o nome do namespace
                 const partes = peer.split('@');
                 const nameOnly = partes[0];
                 const ns = partes[1] || 'default';
@@ -218,16 +222,32 @@
                 dynamicPeersDiv.appendChild(divPeer);
             });
 
-            // --- GERA ITEM DA LISTA DE GRUPOS ---
+            // --- GERAÇÃO DO GRUPO GLOBAL PADRÃO (*) ---
+            const globalId = '*';
+            if (!chatHistories[globalId]) chatHistories[globalId] = [];
+            const divGlobal = document.createElement('div');
+            divGlobal.className = `chat-list-item ${activeChatId === globalId ? 'active' : ''}`;
+            divGlobal.id = 'item-group-global'; 
+            divGlobal.onclick = () => switchChat(globalId, 'Group', 'Geral', 'Broadcast Global');
+            
+            const lastGlobalMsg = chatHistories[globalId].length > 0 ? chatHistories[globalId][chatHistories[globalId].length - 1].text : 'Mensagens globais';
+            divGlobal.innerHTML = `
+                <div class="avatar" style="background: #e67e22;"><i class="fas fa-globe"></i></div>
+                <div class="chat-info">
+                    <div class="chat-name">* Geral</div>
+                    <div class="chat-preview" id="preview-${globalId}">${lastGlobalMsg}</div>
+                </div>
+            `;
+            dynamicGroupsDiv.appendChild(divGlobal);
+
+            // --- GERA ITENS DOS DEMAIS GRUPOS ---
             namespaces.forEach(ns => {
                 const groupId = '#' + ns; 
                 if (!chatHistories[groupId]) chatHistories[groupId] = [];
                 
                 const divGroup = document.createElement('div');
                 divGroup.className = `chat-list-item ${activeChatId === groupId ? 'active' : ''}`;
-                
                 divGroup.id = 'item-group-' + ns; 
-                
                 divGroup.onclick = () => switchChat(groupId, 'Group', ns, 'Grupo P2P');
                 
                 const lastMsg = chatHistories[groupId].length > 0 ? chatHistories[groupId][chatHistories[groupId].length-1].text : 'Chat do Grupo';
@@ -251,7 +271,11 @@
             
             let elementId = 'item-' + id;
             if (type === 'Group') {
-                elementId = 'item-group-' + id.replace('#', '');
+                if (id === '*') {
+                    elementId = 'item-group-global';
+                } else {
+                    elementId = 'item-group-' + id.replace('#', '');
+                }
             }
             
             const activeItem = document.getElementById(elementId);
@@ -264,7 +288,11 @@
             if (type === 'Terminal') {
                 avatar.innerHTML = '<i class="fas fa-terminal"></i>'; avatar.style.background = '#00a884';
             } else if (type === 'Group') {
-                avatar.innerHTML = '<i class="fas fa-users"></i>'; avatar.style.background = '#9b59b6';
+                if (id === '*') {
+                    avatar.innerHTML = '<i class="fas fa-globe"></i>'; avatar.style.background = '#e67e22';
+                } else {
+                    avatar.innerHTML = '<i class="fas fa-users"></i>'; avatar.style.background = '#9b59b6';
+                }
             } else {
                 avatar.innerHTML = '<i class="fas fa-user"></i>'; avatar.style.background = '#3498db';
             }
