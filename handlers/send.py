@@ -57,14 +57,16 @@ async def pub_handler(msg):
     """
     Trata mensagens de publicação em canais/grupos (PUB).
     """
-    dst = msg.get("dst", "").replace("#", "")
-    conteudo = msg.get('payload')
+    src = msg.get("src", "Desconhecido")
+    dst = msg.get("dst", "*")
+    payload = msg.get("payload", "")
     
-    if dst and conteudo:
-        await enviar_para_chat_web(dst, conteudo)
-            
+    id_grupo_visual = dst if (dst == "*" or dst.startswith("#")) else f"#{dst}"
+
+    if dst and payload:
         print(f"\n[MENSAGEM PUB] {msg.get('src')} -> {msg.get('dst')}")
         print(msg.get("payload"))
+        await enviar_para_chat_web(target_id=id_grupo_visual, mensagem=payload)
         return True
     
     return False

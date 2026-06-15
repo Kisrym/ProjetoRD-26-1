@@ -170,14 +170,14 @@
         socket.on('chat_message', function(data) {
             let idDst = data.target_id;
 
-            if (idDst === '*' || idDst.startsWith('#')) {
-                const namespace = idDst.replace("#", "")
-
-                idDst = 'group_' + namespace;
-
-                if (!chatHistories[idDst]) {
-                    chatHistories[idDst] = []
+            if (idDst !== 'Terminal' && !idDst.includes('@') && idDst !== '*') {
+                if (!idDst.startsWith('#')) {
+                    idDst = '#' + idDst;
                 }
+            }
+
+            if (!chatHistories[idDst]) {
+                chatHistories[idDst] = [];
             }
 
             storeMessage(idDst, data.msg, data.type);
@@ -220,12 +220,14 @@
 
             // --- GERA ITEM DA LISTA DE GRUPOS ---
             namespaces.forEach(ns => {
-                const groupId = 'group_' + ns;
+                const groupId = '#' + ns; 
                 if (!chatHistories[groupId]) chatHistories[groupId] = [];
                 
                 const divGroup = document.createElement('div');
                 divGroup.className = `chat-list-item ${activeChatId === groupId ? 'active' : ''}`;
-                divGroup.id = 'item-' + groupId;
+                
+                divGroup.id = 'item-group-' + ns; 
+                
                 divGroup.onclick = () => switchChat(groupId, 'Group', ns, 'Grupo P2P');
                 
                 const lastMsg = chatHistories[groupId].length > 0 ? chatHistories[groupId][chatHistories[groupId].length-1].text : 'Chat do Grupo';
@@ -246,7 +248,13 @@
             activeChatType = type;
             
             document.querySelectorAll('.chat-list-item').forEach(el => el.classList.remove('active'));
-            const activeItem = document.getElementById('item-' + id);
+            
+            let elementId = 'item-' + id;
+            if (type === 'Group') {
+                elementId = 'item-group-' + id.replace('#', '');
+            }
+            
+            const activeItem = document.getElementById(elementId);
             if (activeItem) activeItem.classList.add('active');
             
             document.getElementById('header-title').textContent = displayName;
@@ -273,11 +281,8 @@
                 if (activeChatType === 'Terminal') {
                     socket.emit('terminal_input', {data: text});
                 } else if (activeChatType === 'Group') {
-                    // Tira o prefixo 'group_' para mandar só o namespace pro Python
-                    const ns = activeChatId.replace('group_', '');
-                    socket.emit('terminal_input', {data: `/pub #${ns} ${text}`});
+                    socket.emit('terminal_input', {data: `/pub ${activeChatId} ${text}`});
                 } else {
-                    // É um Peer normal
                     socket.emit('terminal_input', {data: `/msg ${activeChatId} ${text}`});
                 }
                 inputField.value = '';

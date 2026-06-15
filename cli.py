@@ -13,9 +13,7 @@ async def pub(connected_peers, name, namespace, dst, message):
     Envia uma mensagem de broadcast (PUB) para todos os peers de um grupo específico.
     """
     try:
-        if dst not in grups_online:
-            print(f"[Log] Nenhum peer registrado no grupo {dst}")
-            return
+        print(grups_online)
             
         msg_id = str(uuid.uuid4())
         msg = {
@@ -119,7 +117,7 @@ async def cli_loop(connected_peers, name, namespace):
                 dst_namespace = partes[1]
                 texto = partes[2]
                 await pub(connected_peers, name, namespace, dst_namespace, texto)
-                print(f"[Log] Enviando para GRUPO {dst_namespace}: {texto}")
+                print(f"[CLI] Enviando para GRUPO {dst_namespace}: {texto}")
                 
             continue
             
