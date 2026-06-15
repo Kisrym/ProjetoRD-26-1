@@ -44,10 +44,10 @@ async def message_router(connected_peers, name, namespace):
                 await ack_handler(msg)
 
             elif msg_type == "BYE":
-                await bye_handler(writer, connected_peers, msg, name, namespace)
+                await bye_handler(writer, msg, connected_peers)
 
             elif msg_type == "BYE_OK":
-                await bye_ok_handler(writer, addr, connected_peers, msg)
+                await bye_ok_handler(msg)
 
         except Exception as e:
             print(f"[ROTEADOR] Erro ao processar mensagem {msg_type}: {e}")

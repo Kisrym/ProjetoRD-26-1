@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 import json
 import uuid
+import sys
 
 from webapp import terminal_input_queue
 from peer_conec import grups_online
@@ -89,9 +90,6 @@ async def send(peer_id, writer: asyncio.StreamWriter, name, namespace, message):
 
 
 async def cli_loop(connected_peers, name, namespace):
-    """
-    Loop principal de comandos que consome a fila de inputs de forma não bloqueante.
-    """
     print(f"Sistema P2P pronto. Logado como: {name}@{namespace}")
     
     while True:
@@ -114,6 +112,8 @@ async def cli_loop(connected_peers, name, namespace):
             
         elif cmd.startswith("@group_msg") or cmd.startswith("/pub"):
             partes = cmd.split(" ", 2)
+
+            #! AQUI TEM QUE ANALISAR SE O PUB É NO ESCOPO DE GRUPO OU BROADCAST
 
             if len(partes) == 3:
                 dst_namespace = partes[1]
@@ -143,9 +143,15 @@ async def cli_loop(connected_peers, name, namespace):
             continue
             
         elif cmd.startswith("/rtt") or cmd.startswith("/log"):
-            print("Funcionalidade em desenvolvimento ou exibindo logs...")
             continue
             
-        if cmd == "quit":
+        if cmd.startswith("/quit"):
             print("Encerrando o sistema...")
+
+            # FAZER A LIMPA (tirar as tasks do asyncio, loops, encerrar bgl da memoria, etc)
+            # ENVIAR BYE para todos os peers conectados
+            # UNREGISTER no servidor rendezvous
+            # ai sim, sair com exit(0)
+
+            sys.exit(0)
             break

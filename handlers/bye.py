@@ -1,66 +1,57 @@
 import asyncio
 import json
 import time
+import uuid
 
 from peer_conec import *
 from server import open_bye
 
-async def bye_handler(writer: asyncio.StreamWriter, connected_peers, msg, name, namespace):
-    """
-    Trata o recebimento de uma mensagem BYE, removendo o peer e confirmando com BYE_OK.
-    """
+async def send_bye(peer_id, writer: asyncio.StreamWriter, connected_peers, name, namespace):
+    payload = {
+        "type": "BYE",
+        "msg_id": str(uuid.uuid4()),
+        "src": f"{name}@{namespace}", # Passar dinâmico
+        "dst": peer_id,
+        "reason": "Encerrando sessão",
+        "ttl": 1
+    }
 
-    peer_id = msg.get("peer_id")
-    if peer_id is None:
-        return False
+    try:
+        writer.write((json.dumps(payload) + "\n").encode())
+        await writer.drain()
 
-    connected_peers.pop(peer_id, None)
-    
+        await asyncio.sleep(0.5) # esperar o envio do pacote
+
+    except Exception:
+        pass
+
+    finally:
+        try:
+            writer.close()
+            await writer.wait_closed()
+
+        except Exception: pass
+
+        connected_peers.pop(peer_id, None)
+
+async def bye_handler(writer: asyncio.StreamWriter, bye_received: dict, connected_peers: dict):
+    peer_id = bye_received.get("src")
     response = {
         "type": "BYE_OK",
-        "msg_id": msg.get("msg_id"),
-        "src": f"{name}@{namespace}",
+        "msg_id": bye_received.get("msg_id"),
+        "src": bye_received.get("dst"),
         "dst": peer_id,
         "ttl": 1
     }
-    
+
     try:
-        payload = (json.dumps(response) + "\n").encode()
-        writer.write(payload)
-        await writer.drain()  # aguarda o envio completo dos dados
+        writer.write((json.dumps(response) + "\n").encode())
+        await writer.drain()
 
-    except Exception as e:
-        print(f"[BYE] Erro ao enviar BYE_OK para {peer_id}: {e}")
-    finally:
-        writer.close()
-        await writer.wait_closed()
+    except Exception: pass
 
-    print(f"[BYE] {peer_id} desconectado com sucesso.")
-    return True
+    print(f"[CONEXÃO] Peer {peer_id} se despediu (BYE)")
+    connected_peers.pop(peer_id, None)
 
-
-async def bye_ok_handler(writer: asyncio.StreamWriter, addr, connected_peers, msg):
-    """
-    Trata o recebimento da confirmação BYE_OK.
-    """
-    
-    peer_id = msg.get("peer_id")
-    
-    if open_bye.get(peer_id):
-        print(f"[BYE_OK] {peer_id} confirmou o fechamento da sessão (BYE).")
-        open_bye.pop(peer_id, None)
-        
-        # ??????????????????????????????
-        connected_peers[peer_id] = {
-            "peer_id": peer_id,
-            "ip": addr[0],
-            "port": addr[1],
-            "writer": writer,  # Substituiu o "sock" legado
-            "last_ping": time.time()
-        }
-
-        #
-        return True
-    else:
-        print(f"[BYE_OK] {peer_id} respondeu com BYE_OK sem solicitação prévia.")
-        return False
+async def bye_ok_handler(msg_received: dict):
+    print(f"[CONEXÃO] Confirmação de BYE_OK recebida de {msg_received.get("peer_id")}")

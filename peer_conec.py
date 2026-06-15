@@ -3,8 +3,8 @@ import time
 
 from handlers.ping import *
 from rendezvous_connection import *
-from handlers.hello import *
-from config import PEER_PORT
+from handlers.hello import hand_shake, cadastrar_peers
+from config import PEER_PORT, PING_INTERVAL, PEER_RECONNECT_TRIES
 
 grups_online = {}
 
@@ -21,23 +21,56 @@ def add_grups(connected_peers):
 
 async def keep_alive(connected_peers, name, namespace):
     timer = 0
+
     while True:
         if time.time() - timer >= 30: # a cada 30 segundos, atualiza a lista de peers no servidor
-            timer = time.time()
-            
+            timer = time.time()        
             peers, err = await discorver_handler()
 
             if err:
                 print("[KEEP-ALIVE] Erro ao descobrir peers:", err)
-                return 1
-            
-            await cadastrar_peers(peers, connected_peers, name, namespace)
+
+            else:
+                await cadastrar_peers(peers, connected_peers, name, namespace)
 
 
-        await send_ping_handler(connected_peers, name)
+        now = time.time()
+        peer_ids = list(connected_peers.keys())
+
+        for pid in peer_ids:
+            dados = connected_peers.get(pid)
+            if not dados:
+                continue
+
+            if now - dados.get("last_ping", 0) >= PING_INTERVAL: # depois de PING_INTERVAL segundos envia um ping dnv
+                writer = dados["writer"]
+                ip = dados["ip"]
+                port = dados["port"]
+
+                print(f"[PING] {pid} ocioso, enviando PING...")
+
+                success = await send_ping(writer, pid, connected_peers)
+
+                if success:
+                    dados["last_ping"] = time.time()
+
+                else:
+                    print(f"[KEEP_ALIVE] Detectada queda de {pid}. Removendo da tabela...")
+
+                    # remove o socket desse peer
+                    try:
+                        writer.close()
+                        await writer.wait_closed()
+                    except Exception:
+                        pass
+
+                    connected_peers.pop(pid, None)
+
+                    asyncio.create_task(
+                        try_to_reconnect(pid, ip, port, connected_peers, name, namespace)
+                    )
         
         add_grups(connected_peers)
-
         await asyncio.sleep(1)
 
 
@@ -66,3 +99,42 @@ async def peer_connection(connected_peers, name, namespace):
                 registered = False
                 print("[CONEXÃO] Erro no keep-alive, tentando registrar novamente...")
                 await asyncio.sleep(2)
+
+async def try_to_reconnect(peer_id, ip, port, connected_peers, name, namespace):
+    tries = 1
+    timeout = 2.0
+
+    print(f"[RECONEXÃO] Iniciando rotina de reconexão com {peer_id}")
+
+    while tries <= PEER_RECONNECT_TRIES:
+        # se o peer se conectou com o server, para a tentativa
+        if peer_id in connected_peers:
+            print(f"[RECONEXÃO] {peer_id} já se reconectou")
+            return True
+        
+        try:
+            writer = await hand_shake(ip, port, peer_id, name, namespace)
+
+            if writer is not None:
+                print(f"[RECONEXÃO] Sucesso! {peer_id} está conectado novamente.")
+
+                connected_peers[peer_id] = {
+                    "writer": writer,
+                    "ip": ip,
+                    "port": port,
+                    "last_ping": time.time()
+                }
+
+                return True
+            
+        except Exception:
+            pass
+
+        if tries < PEER_RECONNECT_TRIES:
+            await asyncio.sleep(timeout)
+            timeout *= 2 # backoff exponencial
+        
+        tries += 1
+
+    print(f"[RECONEXÃO] Esgotadas as {PEER_RECONNECT_TRIES} tentativas.")
+    return False

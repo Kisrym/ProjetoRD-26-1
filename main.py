@@ -2,7 +2,7 @@ import asyncio
 from hypercorn.config import Config
 import hypercorn.asyncio
 
-from webapp import *
+import webapp
 from peer_conec import *
 from router import *
 from server import *
@@ -14,10 +14,12 @@ async def start_web_server():
     """Inicia o servidor web Quart/Socket.IO de forma totalmente assíncrona."""
     config = Config()
     config.bind = [f"0.0.0.0:{WEBAPP_PORT}"]
+
+    config.shutdown_timeout = 0.0
     
     async def run_server():
         try:
-            await hypercorn.asyncio.serve(asgi_app, config)
+            await hypercorn.asyncio.serve(webapp.asgi_app, config)
 
         except Exception as e:
             print(f"[ERRO WEBAPP] Servidor web falhou: {e}")
@@ -26,16 +28,16 @@ async def start_web_server():
 
 
 async def main():
-    _loop = asyncio.get_running_loop()
+    webapp._loop = asyncio.get_running_loop()
 
     await start_web_server()
 
     print(f"=> Acesse http://localhost:{WEBAPP_PORT} no navegador para configurar o Nome e Namespace.")
 
-    await config_ready.wait()
+    await webapp.config_ready.wait()
 
-    name = peer_config["name"]
-    namespace = peer_config["namespace"]
+    name = webapp.peer_config["name"]
+    namespace = webapp.peer_config["namespace"]
     peer_id = f"{name}@{namespace}"
 
     print(f"=> Peer configurado com sucesso: {peer_id}")
@@ -44,9 +46,9 @@ async def main():
     try:
         await asyncio.gather(
             servidor(PEER_PORT),
-            message_router(connected_peers, name, namespace),
-            peer_connection(connected_peers, name, namespace),
-            cli_loop(connected_peers, name, namespace)
+            message_router(webapp.connected_peers, name, namespace),
+            peer_connection(webapp.connected_peers, name, namespace),
+            cli_loop(webapp.connected_peers, name, namespace)
         )
 
     except asyncio.CancelledError:
@@ -59,5 +61,3 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\n=> Programa interrompido pelo usuário no terminal.")
-
-        loop = asyncio.get_event_loop()
