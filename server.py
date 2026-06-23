@@ -56,7 +56,7 @@ async def servidor(port, host="0.0.0.0"):
 
     async def handle_client(reader, writer):
         addr = writer.get_extra_info('peername')
-        print(f"[NOVA CONEXÃO ASSÍNCRONA] {addr}")
+        print(f"[NOVA CONEXÃO] {addr}")
         
         # cria uma task em background para escutar o cliente novo
         asyncio.create_task(peer_listener(reader, writer, addr))

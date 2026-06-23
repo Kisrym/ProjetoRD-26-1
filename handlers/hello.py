@@ -79,7 +79,8 @@ async def cadastrar_peers(peers, connected_peers, name, namespace):
                     "ip": peer["ip"],
                     "port": peer["port"],
                     "writer": writer,  # armazena o "conn"
-                    "last_ping": time.time()
+                    "last_ping": time.time(),
+                    "direction" : "inbound"
                 }
 
 
@@ -96,7 +97,8 @@ async def hello_handler(writer: asyncio.StreamWriter, addr, connected_peers, msg
         "ip": addr[0],
         "port": addr[1],
         "writer": writer,  # armazena o "conn"
-        "last_ping": time.time()
+        "last_ping": time.time(),
+        "direction" : "outbound"
     }
     
     response = {

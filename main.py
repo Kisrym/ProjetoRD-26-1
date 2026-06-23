@@ -47,7 +47,7 @@ async def main():
         await asyncio.gather(
             servidor(PEER_PORT),
             message_router(webapp.connected_peers, name, namespace),
-            peer_connection(webapp.connected_peers, name, namespace),
+            peer_connection(webapp.connected_peers, name, namespace), # registro ocorre aqui
             cli_loop(webapp.connected_peers, name, namespace)
         )
 

@@ -122,7 +122,8 @@ async def try_to_reconnect(peer_id, ip, port, connected_peers, name, namespace):
                     "writer": writer,
                     "ip": ip,
                     "port": port,
-                    "last_ping": time.time()
+                    "last_ping": time.time(),
+                    "direction" : "inbound"
                 }
 
                 return True

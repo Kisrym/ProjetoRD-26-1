@@ -7,6 +7,7 @@ import sys
 from webapp import terminal_input_queue
 from peer_conec import grups_online, close_all_connections
 from server import open_send
+from peer_conec import try_to_reconnect
 
 async def pub(connected_peers, name, namespace, dst, message):
     """
@@ -140,13 +141,18 @@ async def cli_loop(connected_peers, name, namespace):
             
         elif cmd.startswith("/conn"): # REFAZER, N É ISSO QUE ESSA FUNÇÃO DEVERIA FAZER. VIDE https://github.com/mfcaetano/pyp2p-rdv/blob/main/src/docs/RC202502%20-%20PyP2p%20-%20Especificacao%20Trabalho.md#interface-de-usu%C3%A1rio-cli
             for peer_id in connected_peers:
-                print(f"Conectado a {peer_id} - Último ping: {connected_peers[peer_id].get('last_ping', 'N/A')}")
+                print(f"Conectado a {peer_id} - Direção: {connected_peers[peer_id].get('direction')}")
             continue
             
         elif cmd.startswith("/reconnect"):
+            tasks = []
             for peer_id in connected_peers:
-                connected_peers[peer_id]["last_ping"] = 0
-            print("Forçando reconexão com todos os peers (zerando timestamps de keep-alive)...")
+                tasks.append(try_to_reconnect(peer_id, connected_peers.get("ip"), connected_peers.get("port"), connected_peers, name, namespace))
+
+            if tasks:
+                await asyncio.gather(*tasks)
+
+            print("Forçando reconexão com todos os peers...")
             
             continue
             
