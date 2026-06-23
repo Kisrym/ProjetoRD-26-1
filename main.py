@@ -8,7 +8,9 @@ from router import *
 from server import *
 from cli import *
 from config import *
-
+from rendezvous_connection import discover_loop
+from config import *
+import argparse
 
 async def start_web_server():
     """Inicia o servidor web Quart/Socket.IO de forma totalmente assíncrona."""
@@ -27,18 +29,28 @@ async def start_web_server():
     return asyncio.create_task(run_server())
 
 
-async def main():
+async def main(cli_only: bool = False):
     webapp._loop = asyncio.get_running_loop()
 
-    await start_web_server()
+    if not cli_only:
+        webapp.interceptar_terminal()
+        await start_web_server()
+        print(f"=> Acesse http://localhost:{WEBAPP_PORT} no navegador para configurar o Nome e Namespace.")
+        await webapp.config_ready.wait()
+        name = webapp.peer_config["name"]
+        namespace = webapp.peer_config["namespace"]
 
-    print(f"=> Acesse http://localhost:{WEBAPP_PORT} no navegador para configurar o Nome e Namespace.")
+    else:
+        print("[MODO TERMINAL] Iniciando sem interface Web.")
+        name = PEER_NAME
+        namespace = PEER_NAMESPACE
 
-    await webapp.config_ready.wait()
-
-    name = webapp.peer_config["name"]
-    namespace = webapp.peer_config["namespace"]
     peer_id = f"{name}@{namespace}"
+
+    success = await register_handler(name, namespace, PEER_PORT)
+    if not success:
+        print("[REGISTRO] Erro ao registrar-se ao servidor rendezvous")
+        exit(-1)
 
     print(f"=> Peer configurado com sucesso: {peer_id}")
 
@@ -46,9 +58,10 @@ async def main():
     try:
         await asyncio.gather(
             servidor(PEER_PORT),
-            message_router(webapp.connected_peers, name, namespace),
-            peer_connection(webapp.connected_peers, name, namespace), # registro ocorre aqui
-            cli_loop(webapp.connected_peers, name, namespace)
+            discover_loop(name, namespace),
+            message_router(name, namespace),
+            keep_alive(name, namespace),
+            cli_loop(name, namespace)
         )
 
     except asyncio.CancelledError:
@@ -56,8 +69,13 @@ async def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cli", action="store_true", help="Inicia o programa rodando apenas no terminal, sem o WebApp")
+
+    args = parser.parse_args()
+
     try:
-        asyncio.run(main())
+        asyncio.run(main(cli_only=args.cli))
 
     except KeyboardInterrupt:
         print("\n=> Programa interrompido pelo usuário no terminal.")

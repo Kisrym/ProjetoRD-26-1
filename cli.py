@@ -4,12 +4,12 @@ import json
 import uuid
 import sys
 
-from webapp import terminal_input_queue
+from webapp import terminal_input_queue, connected_peers, peer_config
 from peer_conec import grups_online, close_all_connections
 from server import open_send
 from peer_conec import try_to_reconnect
 
-async def pub(connected_peers, name, namespace, dst, message):
+async def pub(name, namespace, dst, message):
     """
     Envia uma mensagem de broadcast (PUB) para todos os peers de um grupo específico.
     """
@@ -98,9 +98,23 @@ async def send(peer_id, writer: asyncio.StreamWriter, name, namespace, message):
         open_send.pop(msg_id, None)
 
 
-async def cli_loop(connected_peers, name, namespace):
+def read_cmd(queue, loop):
+    while True:
+        sys.stdout.write(">> ")
+        sys.stdout.flush()
+
+        line = sys.stdin.readline()
+        if not line: break
+
+        loop.call_soon_threadsafe(queue.put_nowait, line)
+
+async def cli_loop(name, namespace):
     print(f"Sistema P2P pronto. Logado como: {name}@{namespace}")
     
+    if not peer_config.get('name'): #### se ele entrou em modo cmd, ou seja, n configurou
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(None, read_cmd, terminal_input_queue, loop)
+
     while True:
         cmd = await terminal_input_queue.get()
         cmd = cmd.strip()
@@ -127,7 +141,7 @@ async def cli_loop(connected_peers, name, namespace):
             if len(partes) == 3:
                 dst_namespace = partes[1]
                 texto = partes[2]
-                await pub(connected_peers, name, namespace, dst_namespace, texto)
+                await pub(name, namespace, dst_namespace, texto)
                 print(f"[CLI] Enviando para GRUPO {dst_namespace}: {texto}")
                 
             continue
@@ -139,7 +153,7 @@ async def cli_loop(connected_peers, name, namespace):
 
             continue
             
-        elif cmd.startswith("/conn"): # REFAZER, N É ISSO QUE ESSA FUNÇÃO DEVERIA FAZER. VIDE https://github.com/mfcaetano/pyp2p-rdv/blob/main/src/docs/RC202502%20-%20PyP2p%20-%20Especificacao%20Trabalho.md#interface-de-usu%C3%A1rio-cli
+        elif cmd.startswith("/conn"):
             for peer_id in connected_peers:
                 print(f"Conectado a {peer_id} - Direção: {connected_peers[peer_id].get('direction')}")
             continue
@@ -147,7 +161,7 @@ async def cli_loop(connected_peers, name, namespace):
         elif cmd.startswith("/reconnect"):
             tasks = []
             for peer_id in connected_peers:
-                tasks.append(try_to_reconnect(peer_id, connected_peers[peer_id].get("ip"), connected_peers[peer_id].get("port"), connected_peers, name, namespace))
+                tasks.append(try_to_reconnect(peer_id, connected_peers[peer_id].get("ip"), connected_peers[peer_id].get("port"), name, namespace))
 
             if tasks:
                 await asyncio.gather(*tasks)
@@ -163,7 +177,7 @@ async def cli_loop(connected_peers, name, namespace):
             print("Encerrando o sistema...")
 
             try:
-                await close_all_connections(connected_peers, name, namespace)
+                await close_all_connections(name, namespace)
                 
                 current_task = asyncio.current_task()
                 all_tasks = [t for t in asyncio.all_tasks() if t is not current_task]

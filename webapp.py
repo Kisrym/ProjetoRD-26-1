@@ -20,7 +20,6 @@ terminal_input_queue = asyncio.Queue()
 
 _loop = None
 
-
 class WebTerminalOut:
     def __init__(self, original_stream):
         self.original_stream = original_stream
@@ -38,10 +37,10 @@ class WebTerminalOut:
     def flush(self):
         self.original_stream.flush()
 
-
-sys.stdout = WebTerminalOut(sys.stdout)
-sys.stderr = WebTerminalOut(sys.stderr)
-
+def interceptar_terminal():
+    sys.stdout = WebTerminalOut(sys.stdout)
+    sys.stderr = WebTerminalOut(sys.stderr)
+    print("[WEBAPP] Terminal integrado com sucesso.")
 
 async def monitor_peers():
     """Tarefa assíncrona de monitoramento executada no loop principal."""

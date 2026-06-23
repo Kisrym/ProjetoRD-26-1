@@ -6,7 +6,7 @@ import uuid
 
 from server import open_ping 
 
-async def send_ping(writer: asyncio.StreamWriter, peer_id, connected_peers):
+async def send_ping(writer: asyncio.StreamWriter, peer_id):
     """
     Monta a mensagem de PING, envia e aguarda de forma assíncrona o PONG correspondente.
     """

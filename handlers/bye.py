@@ -4,37 +4,9 @@ import time
 import uuid
 
 from peer_conec import *
-from server import open_bye
+from webapp import connected_peers
 
-async def send_bye(peer_id, writer: asyncio.StreamWriter, connected_peers, name, namespace):
-    payload = {
-        "type": "BYE",
-        "msg_id": str(uuid.uuid4()),
-        "src": f"{name}@{namespace}", # Passar dinâmico
-        "dst": peer_id,
-        "reason": "Encerrando sessão",
-        "ttl": 1
-    }
-
-    try:
-        writer.write((json.dumps(payload) + "\n").encode())
-        await writer.drain()
-
-        await asyncio.sleep(0.5) # esperar o envio do pacote
-
-    except Exception:
-        pass
-
-    finally:
-        try:
-            writer.close()
-            await writer.wait_closed()
-
-        except Exception: pass
-
-        connected_peers.pop(peer_id, None)
-
-async def bye_handler(writer: asyncio.StreamWriter, bye_received: dict, connected_peers: dict):
+async def bye_handler(writer: asyncio.StreamWriter, bye_received: dict):
     peer_id = bye_received.get("src")
     response = {
         "type": "BYE_OK",

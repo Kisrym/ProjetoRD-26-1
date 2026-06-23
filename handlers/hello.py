@@ -2,9 +2,8 @@ import asyncio
 import json
 import time
 
-from server import open_hello
-from server import peer_listener
-
+from server import open_hello, peer_listener
+from webapp import connected_peers
 
 async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
     """
@@ -53,7 +52,7 @@ async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
         open_hello.pop(peer_id, None)
 
 
-async def cadastrar_peers(peers, connected_peers, name, namespace):
+async def cadastrar_peers(peers, name, namespace):
     """
     Varre os peers descobertos pelo Rendezvous e inicia handshake com novos conhecidos.
     """
@@ -84,7 +83,7 @@ async def cadastrar_peers(peers, connected_peers, name, namespace):
                 }
 
 
-async def hello_handler(writer: asyncio.StreamWriter, addr, connected_peers, msg, name, namespace):
+async def hello_handler(writer: asyncio.StreamWriter, addr, msg, name, namespace):
     """
     Trata o recebimento de uma mensagem HELLO vinda de outro peer.
     """

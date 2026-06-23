@@ -1,7 +1,9 @@
 import asyncio
 import json
 from config import *
-
+import time
+from handlers.hello import cadastrar_peers
+from webapp import connected_peers
 
 async def register_handler(name, namespace, peer_port):
     """
@@ -108,6 +110,18 @@ async def unregister(name, namespace, port):
     finally:
         writer.close()
         await writer.wait_closed()
+
+async def discover_loop(name: str, peer_namespace: str, namespace = None):
+    while True:
+        peers, err = await discorver_handler()
+
+        if err:
+            print("[RENDEZVOUS] Erro ao descobrir peers:", err)
+
+        else:
+            await cadastrar_peers(peers, name, peer_namespace)
+
+        await asyncio.sleep(30)
 
 async def discorver_handler(namespace=None):
     """

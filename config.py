@@ -5,8 +5,12 @@ with open("config.json", "r") as f:
 
 HOST = config["host"]
 PORT = config["port"]
+
+PEER_NAME = config["name"]
+PEER_NAMESPACE = config["namespace"]
 PEER_PORT = config["peer_port"]
 WEBAPP_PORT = config["webapp_port"]
+
 PEER_RECONNECT_TRIES = config["max_peer_reconnect_attempts"]
 RDZV_RECONNECT_TRIES = config["max_rdzv_reconnect_attempts"]
 RDZV_DISCOVER_TRIES = config["max_rdzv_discover_attempts"]

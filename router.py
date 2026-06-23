@@ -6,8 +6,7 @@ from handlers.ping import *
 from handlers.send import *
 from handlers.bye import *
 
-
-async def message_router(connected_peers, name, namespace):
+async def message_router(name, namespace):
     print("[ROTEADOR] Inicializado e aguardando mensagens...")
     
     while True:
@@ -23,7 +22,7 @@ async def message_router(connected_peers, name, namespace):
 
         try:
             if msg_type == "HELLO":
-                await hello_handler(writer, addr, connected_peers, msg, name, namespace)
+                await hello_handler(writer, addr, msg, name, namespace)
 
             elif msg_type == "HELLO_OK":
                 await hello_ok_handler(msg)
@@ -44,7 +43,7 @@ async def message_router(connected_peers, name, namespace):
                 await ack_handler(msg)
 
             elif msg_type == "BYE":
-                await bye_handler(writer, msg, connected_peers)
+                await bye_handler(writer, msg)
 
             elif msg_type == "BYE_OK":
                 await bye_ok_handler(msg)
