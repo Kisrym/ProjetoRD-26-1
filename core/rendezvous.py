@@ -3,7 +3,7 @@ import json
 from config import *
 import time
 from handlers.hello import cadastrar_peers
-from webapp import connected_peers
+from interfaces.web.app import connected_peers
 
 async def register_handler(name, namespace, peer_port):
     """

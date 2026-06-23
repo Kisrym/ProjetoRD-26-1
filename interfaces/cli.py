@@ -4,10 +4,10 @@ import json
 import uuid
 import sys
 
-from webapp import terminal_input_queue, connected_peers, peer_config
-from peer_conec import grups_online, close_all_connections
-from server import open_send
-from peer_conec import try_to_reconnect
+from interfaces.web.app import terminal_input_queue, connected_peers, peer_config
+from core.connection import grups_online, close_all_connections
+from core.server import open_send
+from core.connection import try_to_reconnect
 
 async def pub(name, namespace, dst, message):
     """

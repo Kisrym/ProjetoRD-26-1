@@ -2,8 +2,8 @@ import asyncio
 from datetime import datetime, timezone
 import json
 
-from cli import open_send
-from webapp import enviar_para_chat_web
+from interfaces.cli import open_send
+from interfaces.web.app import enviar_para_chat_web
 
 
 async def send_handler(writer: asyncio.StreamWriter, msg):

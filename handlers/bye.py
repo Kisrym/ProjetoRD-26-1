@@ -3,8 +3,8 @@ import json
 import time
 import uuid
 
-from peer_conec import *
-from webapp import connected_peers
+from core.connection import *
+from interfaces.web.app import connected_peers
 
 async def bye_handler(writer: asyncio.StreamWriter, bye_received: dict):
     peer_id = bye_received.get("src")

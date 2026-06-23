@@ -2,13 +2,13 @@ import asyncio
 from hypercorn.config import Config
 import hypercorn.asyncio
 
-import webapp
-from peer_conec import *
-from router import *
-from server import *
-from cli import *
+import interfaces.web.app as app
+from core.connection import *
+from core.router import *
+from core.server import *
+from interfaces.cli import *
 from config import *
-from rendezvous_connection import discover_loop
+from core.rendezvous import discover_loop
 from config import *
 import argparse
 
@@ -21,7 +21,7 @@ async def start_web_server():
     
     async def run_server():
         try:
-            await hypercorn.asyncio.serve(webapp.asgi_app, config)
+            await hypercorn.asyncio.serve(app.asgi_app, config)
 
         except Exception as e:
             print(f"[ERRO WEBAPP] Servidor web falhou: {e}")
@@ -30,15 +30,15 @@ async def start_web_server():
 
 
 async def main(cli_only: bool = False):
-    webapp._loop = asyncio.get_running_loop()
+    app._loop = asyncio.get_running_loop()
 
     if not cli_only:
-        webapp.interceptar_terminal()
+        app.interceptar_terminal()
         await start_web_server()
         print(f"=> Acesse http://localhost:{WEBAPP_PORT} no navegador para configurar o Nome e Namespace.")
-        await webapp.config_ready.wait()
-        name = webapp.peer_config["name"]
-        namespace = webapp.peer_config["namespace"]
+        await app.config_ready.wait()
+        name = app.peer_config["name"]
+        namespace = app.peer_config["namespace"]
 
     else:
         print("[MODO TERMINAL] Iniciando sem interface Web.")

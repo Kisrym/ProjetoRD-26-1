@@ -2,8 +2,8 @@ import asyncio
 import json
 import time
 
-from server import open_hello, peer_listener
-from webapp import connected_peers
+from core.server import open_hello, peer_listener
+from interfaces.web.app import connected_peers
 
 async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
     """

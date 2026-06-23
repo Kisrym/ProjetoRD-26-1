@@ -1,5 +1,5 @@
 import asyncio
-from server import message_queue
+from core.server import message_queue
 
 from handlers.hello import *
 from handlers.ping import *

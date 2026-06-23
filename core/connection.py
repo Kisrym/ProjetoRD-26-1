@@ -2,10 +2,10 @@ import asyncio
 import time
 
 from handlers.ping import *
-from rendezvous_connection import *
+from core.rendezvous import *
 from handlers.hello import hand_shake
 from config import PEER_PORT, PING_INTERVAL, PEER_RECONNECT_TRIES
-from webapp import connected_peers
+from interfaces.web.app import connected_peers
 
 grups_online = {}
 

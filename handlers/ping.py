@@ -4,7 +4,7 @@ import json
 import time
 import uuid
 
-from server import open_ping 
+from core.server import open_ping 
 
 async def send_ping(writer: asyncio.StreamWriter, peer_id):
     """
