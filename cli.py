@@ -147,7 +147,7 @@ async def cli_loop(connected_peers, name, namespace):
         elif cmd.startswith("/reconnect"):
             tasks = []
             for peer_id in connected_peers:
-                tasks.append(try_to_reconnect(peer_id, connected_peers.get("ip"), connected_peers.get("port"), connected_peers, name, namespace))
+                tasks.append(try_to_reconnect(peer_id, connected_peers[peer_id].get("ip"), connected_peers[peer_id].get("port"), connected_peers, name, namespace))
 
             if tasks:
                 await asyncio.gather(*tasks)
