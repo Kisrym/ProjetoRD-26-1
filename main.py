@@ -47,7 +47,7 @@ async def main(cli_only: bool = False):
 
     peer_id = f"{name}@{namespace}"
 
-    success = await register_handler(name, namespace, PEER_PORT)
+    success, data = await register_handler(name, namespace, PEER_PORT)
     if not success:
         print("[REGISTRO] Erro ao registrar-se ao servidor rendezvous")
         exit(-1)
@@ -57,6 +57,7 @@ async def main(cli_only: bool = False):
     # dispara todas as tarefas 
     try:
         await asyncio.gather(
+            register_loop(name, namespace, PEER_PORT), # atualiza o usuário no servidor quando o ttl acaba
             servidor(PEER_PORT),
             discover_loop(name, namespace),
             message_router(name, namespace),

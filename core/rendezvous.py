@@ -1,9 +1,21 @@
 import asyncio
 import json
 from config import *
-import time
+import sys
 from handlers.hello import cadastrar_peers
 from interfaces.web.app import connected_peers
+from config import PEER_TTL
+
+async def register_loop(name, namespace, peer_port):
+    while True:
+        success, data = await register_handler(name, namespace, peer_port)
+
+        if success and data is not None:
+            await asyncio.sleep(data.get("ttl") * 0.8) # vai renovar o registro antes de acabar o ttl
+
+        else:
+            print("[REGISTER] Erro ao tentar registrar-se ao servidor. Tentando novamente...")
+            await asyncio.sleep(5)
 
 async def register_handler(name, namespace, peer_port):
     """
@@ -11,9 +23,9 @@ async def register_handler(name, namespace, peer_port):
     """
     contador = 0
     while contador < RDZV_RECONNECT_TRIES:
-        status = await register(name, namespace, peer_port)
+        status, data = await register(name, namespace, peer_port)
         if status == 1:
-            return True
+            return True, data
         
         else:
             contador += 1
@@ -21,10 +33,10 @@ async def register_handler(name, namespace, peer_port):
             await asyncio.sleep(5)
             
     print(f"[RENDEZVOUS] Falha ao registrar o peer após {RDZV_RECONNECT_TRIES} tentativas.")
-    return False
+    return False, None
 
 
-async def register(name, namespace, peer_port, ttl=3600):
+async def register(name, namespace, peer_port):
     """
     Abre uma conexão temporária, envia o comando REGISTER e trata a resposta.
     """
@@ -36,7 +48,7 @@ async def register(name, namespace, peer_port, ttl=3600):
             "namespace": namespace,
             "name": name,
             "port": peer_port,
-            "ttl": ttl
+            "ttl": PEER_TTL
         }
         
         writer.write((json.dumps(msg) + "\n").encode())
@@ -45,10 +57,9 @@ async def register(name, namespace, peer_port, ttl=3600):
         response_bytes = await reader.read(4096)
         if not response_bytes:
             print("[RENDEZVOUS] Servidor fechou a conexão sem responder.")
-            return 0
+            return 0, None
             
         response = response_bytes.decode()
-        print("[RENDEZVOUS] Resposta do servidor:", response)
         data = json.loads(response)
         
         writer.close()
@@ -69,19 +80,19 @@ async def register(name, namespace, peer_port, ttl=3600):
             elif msg_err == "bad_port":
                 print("[RENDEZVOUS] Porta Inválida. Deve ser um inteiro entre 1 e 65535.")
 
-            return 0
+            return 0, None
             
         elif data.get("status") == "OK":     
             print("[RENDEZVOUS] Registrado com sucesso!")
-            return 1
+            return 1, data
         
         else:
             print("[RENDEZVOUS] Resposta desconhecida do servidor.")
-            return 0
+            return 0, None
 
     except Exception as e:
         print(f"[RENDEZVOUS] Erro de conexão ao registrar: {e}")
-        return 0
+        return 0, None
 
 
 async def unregister(name, namespace, port):
@@ -100,8 +111,27 @@ async def unregister(name, namespace, port):
         await writer.drain() # da flush no buffer de write; na pratica, espera os dados entrarem na rede de fato
 
         response = await reader.readline()
+        data = json.loads(response.decode("utf-8"))
+        
+        if data.get("status") == 'ERROR':
+            if data.get('message') == "ad_port (abc)":
+                print("[UNREGISTER] Port inválido ou está fora do intervalo [1, 65535]")
 
-        return json.loads(response.decode("utf-8"))
+            elif data.get('message') == "bad_namespace":
+                print("[UNREGISTER] Namespace Inválivdo. Deve conter entre 1 e 63 caracteres.")
+
+            elif data.get('message') == "peer_not_registered":
+                print("[UNREGISTER] Peer não registrado no rendezvous")
+
+            elif data.get('message') == "namespace_required":
+                print("[UNREGISTER] Campo obrigatório 'namespace' ausente")
+
+            elif data.get('message') == "peer_credentials_do_not_match":
+                print("[UNREGISTER] Credenciais de usuário não correspondem ao banco de dados")
+
+            return 0
+        
+        return 1
     
     except Exception as e:
         print("[UNREGISTER] Erro ao retirar registro:", e)

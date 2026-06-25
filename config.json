@@ -5,6 +5,8 @@
   "name" : "kaio",
   "namespace" : "TESTE",
   "peer_port": 9999,
+  "ttl" : 3600,
+
   "webapp_port": 5000,
 
   "max_peer_reconnect_attempts": 5,

@@ -34,7 +34,7 @@ async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
         try:
             await asyncio.wait_for(event.wait(), timeout=2.0) # espera 2 segundos pro evento disparar
             
-            print(f"[HANDSHAKE] Registrado com sucesso com {peer_id}")
+            print(f"[HANDSHAKE] Conexão com {peer_id} bem sucedida")
             return writer
             
         except asyncio.TimeoutError:

@@ -9,6 +9,8 @@ PORT = config["port"]
 PEER_NAME = config["name"]
 PEER_NAMESPACE = config["namespace"]
 PEER_PORT = config["peer_port"]
+PEER_TTL = config["ttl"]
+
 WEBAPP_PORT = config["webapp_port"]
 
 PEER_RECONNECT_TRIES = config["max_peer_reconnect_attempts"]
