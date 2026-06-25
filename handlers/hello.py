@@ -63,24 +63,19 @@ async def cadastrar_peers(peers, name, namespace):
         if peer_id == f"{name}@{namespace}":
             continue
 
-        if peer_id in connected_peers: # se ja esta conectado
+        if peer_id in connected_peers.get_all_peers(): # se ja esta conectado
             continue
 
-        if peer_id not in connected_peers:
-            print(f"[CADASTRO] Descobrindo {peer_id} em {peer['ip']}:{peer['port']}...")
+        if peer_id not in connected_peers.get_all_peers():
+            print(f"[CONEXÃO] Tentando conexão com {peer_id} em {peer['ip']}:{peer['port']}...")
+            connected_peers.registrar_peer(peer)
             
             writer = await hand_shake(peer["ip"], peer["port"], peer_id, name, namespace)
             
             if writer:
-                print(f"[CADASTRO] Conectado a {peer_id}")
-                connected_peers[peer_id] = {
-                    "peer_id": peer_id,
-                    "ip": peer["ip"],
-                    "port": peer["port"],
-                    "writer": writer,  # armazena o "conn"
-                    "last_ping": time.time(),
-                    "direction" : "inbound"
-                }
+                connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
+                connected_peers.connect_peer(peer_id, writer, time.time(), "inbound")
+                                                    # writer armazena o conn
 
 
 async def hello_handler(writer: asyncio.StreamWriter, addr, msg, name, namespace):
@@ -91,14 +86,8 @@ async def hello_handler(writer: asyncio.StreamWriter, addr, msg, name, namespace
     if peer_id is None:
         return False
 
-    connected_peers[peer_id] = {
-        "peer_id": peer_id,
-        "ip": addr[0],
-        "port": addr[1],
-        "writer": writer,  # armazena o "conn"
-        "last_ping": time.time(),
-        "direction" : "outbound"
-    }
+    connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
+    connected_peers.connect_peer(peer_id, writer, time.time(), "outbound")
     
     response = {
         "type": "HELLO_OK",

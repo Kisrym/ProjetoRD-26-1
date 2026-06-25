@@ -3,7 +3,6 @@ import json
 from config import *
 import sys
 from handlers.hello import cadastrar_peers
-from interfaces.web.app import connected_peers
 from config import PEER_TTL
 
 async def register_loop(name, namespace, peer_port):

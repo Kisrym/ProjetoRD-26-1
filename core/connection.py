@@ -27,7 +27,7 @@ async def keep_alive(name, namespace):
 
         for pid in peer_ids:
             dados = connected_peers.get(pid)
-            if not dados:
+            if not dados or dados.get("connection_status") != "CONNECTED":
                 continue
 
             if now - dados.get("last_ping", 0) >= PING_INTERVAL: # depois de PING_INTERVAL segundos envia um ping dnv
@@ -43,16 +43,14 @@ async def keep_alive(name, namespace):
                     dados["last_ping"] = time.time()
 
                 else:
-                    print(f"[KEEP_ALIVE] Detectada queda de {pid}. Removendo da tabela...") # n voltou um pong
-
+                    print(f"[KEEP_ALIVE] Detectada queda de {pid}. Alterando status de conexão...") # n voltou um pong
+                    connected_peers.change_peer_connection_status(pid, "TRYING_CONNECTION")
                     # remove o socket desse peer
                     try:
                         writer.close()
                         await writer.wait_closed()
                     except Exception:
                         pass
-
-                    connected_peers.pop(pid, None)
 
                     asyncio.create_task(
                         try_to_reconnect(pid, ip, port, name, namespace)
@@ -70,7 +68,8 @@ async def try_to_reconnect(peer_id, ip, port, name, namespace):
 
     while tries <= PEER_RECONNECT_TRIES:
         # se o peer se conectou com o server, para a tentativa
-        if peer_id in connected_peers:
+        peer = connected_peers.get(peer_id)
+        if peer and peer.get("connection_status") == "CONNECTED":
             print(f"[RECONEXÃO] {peer_id} já se reconectou")
             return True
         
@@ -80,13 +79,8 @@ async def try_to_reconnect(peer_id, ip, port, name, namespace):
             if writer is not None:
                 print(f"[RECONEXÃO] Sucesso! {peer_id} está conectado novamente.")
 
-                connected_peers[peer_id] = {
-                    "writer": writer,
-                    "ip": ip,
-                    "port": port,
-                    "last_ping": time.time(),
-                    "direction" : "inbound"
-                }
+                connected_peers.connect_peer(peer_id, writer, time.time(), "inbound")
+                connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
 
                 return True
             
@@ -136,8 +130,6 @@ async def close_all_connections(name, namespace):
             tasks.append(send_bye_and_close(writer, peer_id))
         
         await asyncio.gather(*tasks, return_exceptions=True)
-
-    connected_peers.clear()
 
     try:
         success = await unregister(name, namespace, PEER_PORT)

@@ -3,6 +3,7 @@ import asyncio
 import sys
 from quart import Quart, render_template
 import socketio
+from peer_table import PeerTable
 
 app = Quart(__name__)
 app.config['SECRET_KEY'] = 'secret'
@@ -11,7 +12,7 @@ sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*")
 
 asgi_app = socketio.ASGIApp(sio, app)
 
-connected_peers = {}
+connected_peers = PeerTable()
 peer_config = {}
 
 # Objetos assíncronos globais

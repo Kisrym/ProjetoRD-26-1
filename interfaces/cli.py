@@ -39,8 +39,12 @@ async def pub(name, namespace, dst, message):
             lista_peers = grups_online.get(dst, [])
 
         for peer_id in lista_peers:
-            if peer_id in connected_peers:
-                writer = connected_peers[peer_id]["writer"]
+            if peer_id in connected_peers.get_all_peers():
+                peer = connected_peers.get(peer_id)
+                if not peer:
+                    continue
+
+                writer = peer["writer"]
                 
                 async def send_payload(w, payload):
                     try:
@@ -128,8 +132,11 @@ async def cli_loop(name, namespace):
                 peer_id = partes[1]
                 texto = partes[2]
                 
-                if peer_id in connected_peers:
-                    await send(peer_id, connected_peers[peer_id]["writer"], name, namespace, texto)
+                if peer_id in connected_peers.get_all_peers():
+                    peer = connected_peers.get(peer_id)
+                    if not peer: continue
+
+                    await send(peer_id, peer["writer"], name, namespace, texto)
 
             continue
             
@@ -147,26 +154,39 @@ async def cli_loop(name, namespace):
             continue
             
         elif cmd.startswith("/peers"):
-            print("Peers conectados:")
-            for pid in connected_peers:
-                print(f" - {pid}")
+            print("[CLI] Peers conhecidos:")
+            for pid in connected_peers.get_all_peers():
+                peer = connected_peers.get(pid)
+                if not peer: continue
+
+                print(f" - {pid} | {peer.get("ip")}:{peer.get("port")} | Status: {peer.get("connection_status")}")
 
             continue
             
         elif cmd.startswith("/conn"):
-            for peer_id in connected_peers:
-                print(f"Conectado a {peer_id} - Direção: {connected_peers[peer_id].get('direction')}")
+            print("Conexões Inbound")
+            for item in connected_peers.get_specific_connections('inbound'):
+                print(item)
+
+            print("\nConexões outbound")
+            for item in connected_peers.get_specific_connections('outbound'):
+                print(item)
+
             continue
             
         elif cmd.startswith("/reconnect"):
             tasks = []
-            for peer_id in connected_peers:
-                tasks.append(try_to_reconnect(peer_id, connected_peers[peer_id].get("ip"), connected_peers[peer_id].get("port"), name, namespace))
+            for peer_id in connected_peers.get_all_peers():
+                peer = connected_peers.get(peer_id)
+                if not peer: continue
+
+                connected_peers.change_peer_connection_status(peer_id, "TRYING_CONNECTION") # FORÇA TODOS A RECONEXÃO
+                tasks.append(try_to_reconnect(peer_id, peer.get("ip"), peer.get("port"), name, namespace))
 
             if tasks:
                 await asyncio.gather(*tasks)
 
-            print("Forçando reconexão com todos os peers...")
+            print("[CLI] Forçando reconexão com todos os peers...")
             
             continue
             
