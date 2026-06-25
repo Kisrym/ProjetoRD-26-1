@@ -48,7 +48,7 @@ class PeerTable:
     def get_specific_connections(self, connection_type: str):
         lista = []
         for key, value in self.peers.items():
-            if value.get("direction") == connection_type:
+            if value.get("connection_status") == "CONNECTED" and value.get("direction") == connection_type:
                 lista.append(key)
 
         return lista
