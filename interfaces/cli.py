@@ -41,7 +41,7 @@ async def pub(name, namespace, dst, message):
         for peer_id in lista_peers:
             if peer_id in connected_peers.get_all_peers():
                 peer = connected_peers.get(peer_id)
-                if not peer:
+                if not peer or peer.get("connection_status") != "CONNECTED":
                     continue
 
                 writer = peer["writer"]
@@ -134,7 +134,13 @@ async def cli_loop(name, namespace):
                 
                 if peer_id in connected_peers.get_all_peers():
                     peer = connected_peers.get(peer_id)
-                    if not peer: continue
+                    if not peer:
+                        print("[CLI] Não foi possível resgatar o peer especificado.")
+                        continue
+
+                    if peer.get("connection_status") != "CONNECTED":
+                        print("[CLI] Não é possível enviar mensagem para um peer não conectado.")
+                        continue
 
                     await send(peer_id, peer["writer"], name, namespace, texto)
 

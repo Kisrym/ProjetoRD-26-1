@@ -1,13 +1,13 @@
 {
-  "host": "rdv.mfcaetano.cc",
+  "host": "192.168.0.11",
   "port": 8080,
 
-  "name" : "kaio",
+  "name" : "kaio2",
   "namespace" : "TESTE",
-  "peer_port": 9999,
+  "peer_port": 5000,
   "ttl" : 3600,
 
-  "webapp_port": 5000,
+  "webapp_port": 8000,
 
   "max_peer_reconnect_attempts": 5,
   "max_rdzv_reconnect_attempts" : 3,

@@ -63,12 +63,11 @@ async def cadastrar_peers(peers, name, namespace):
         if peer_id == f"{name}@{namespace}":
             continue
 
-        if peer_id in connected_peers.get_all_peers(): # se ja esta conectado
-            continue
+        connected_peers.registrar_peer(peer)
 
-        if peer_id not in connected_peers.get_all_peers():
+        p = connected_peers.get(peer_id)
+        if p and (p.get("connection_status") == "DISCONNECTED" or p.get("connection_status") == "TRYING_CONNECTION"):
             print(f"[CONEXÃO] Tentando conexão com {peer_id} em {peer['ip']}:{peer['port']}...")
-            connected_peers.registrar_peer(peer)
             
             writer = await hand_shake(peer["ip"], peer["port"], peer_id, name, namespace)
             

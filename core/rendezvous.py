@@ -1,7 +1,6 @@
 import asyncio
 import json
 from config import *
-import sys
 from handlers.hello import cadastrar_peers
 from config import PEER_TTL
 

@@ -48,7 +48,12 @@ async def monitor_peers():
     last_state = None
     print("[WEBAPP] Monitor de peers iniciado.")
     while True:
-        current_peers = list(connected_peers.keys())
+        current_peers = []
+
+        for peer_id, value in connected_peers.items():
+            if value.get("connection_status") == "CONNECTED":
+                current_peers.append(peer_id)
+
         namespace = peer_config.get('namespace', '')
 
         current_state = (current_peers, namespace)
