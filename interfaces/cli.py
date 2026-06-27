@@ -3,11 +3,20 @@ from datetime import datetime, timezone
 import json
 import uuid
 import sys
+import logging
 
-from interfaces.web.app import terminal_input_queue, connected_peers, peer_config
+from interfaces.web.app import terminal_input_queue, connected_peers, peer_config, interceptar_terminal
 from core.connection import grups_online, close_all_connections
 from core.server import open_send
 from core.connection import try_to_reconnect
+
+interceptar_terminal()
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s [%(name)s]: %(message)s",
+    datefmt="%H:%M:%S"
+)
+log = logging.getLogger("CLI")
 
 async def pub(name, namespace, dst, message):
     """
@@ -195,8 +204,24 @@ async def cli_loop(name, namespace):
             print("[CLI] Forçando reconexão com todos os peers...")
             
             continue
-            
-        elif cmd.startswith("/rtt") or cmd.startswith("/log"):
+        
+        elif cmd.startswith("/log"):
+            items = cmd.split()
+            if len(items) != 2:
+                log.error("Formato de parâmetros inválido. Utilize DEBUG|INFO|WARNING|ERROR")
+            else:
+                nivel = items[1].upper()
+                nivel_atual = logging.getLogger().level
+                if nivel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+                    if nivel != logging.getLevelName(nivel_atual):
+                        logging.getLogger().setLevel(getattr(logging, nivel))
+                        log.info(f"Nível de log alterado para {nivel}")
+                    else:
+                        log.warning(f"Nível de log já está em {nivel}")
+                else:
+                    log.error("Nível inválido")
+
+        elif cmd.startswith("/rtt"):
             continue
             
         if cmd.startswith("/quit"):
