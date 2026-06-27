@@ -1,9 +1,9 @@
 {
-  "host": "192.168.0.11",
+  "host": "rdv.mfcaetano.cc",
   "port": 8080,
 
-  "name" : "kaio2",
-  "namespace" : "TESTE",
+  "name" : "user",
+  "namespace" : "test",
   "peer_port": 5000,
   "ttl" : 3600,
 

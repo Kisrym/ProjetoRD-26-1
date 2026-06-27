@@ -79,7 +79,7 @@ async def try_to_reconnect(peer_id, ip, port, name, namespace):
             if writer is not None:
                 print(f"[RECONEXÃO] Sucesso! {peer_id} está conectado novamente.")
 
-                connected_peers.connect_peer(peer_id, writer, time.time(), "inbound")
+                connected_peers.connect_peer(peer_id, writer, time.time(), "outbound")
                 connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
 
                 return True

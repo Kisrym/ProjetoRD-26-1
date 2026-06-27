@@ -73,7 +73,7 @@ async def cadastrar_peers(peers, name, namespace):
             
             if writer:
                 connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
-                connected_peers.connect_peer(peer_id, writer, time.time(), "inbound")
+                connected_peers.connect_peer(peer_id, writer, time.time(), "outbound")
                                                     # writer armazena o conn
 
 
@@ -86,7 +86,7 @@ async def hello_handler(writer: asyncio.StreamWriter, addr, msg, name, namespace
         return False
 
     connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
-    connected_peers.connect_peer(peer_id, writer, time.time(), "outbound")
+    connected_peers.connect_peer(peer_id, writer, time.time(), "inbound")
     
     response = {
         "type": "HELLO_OK",
