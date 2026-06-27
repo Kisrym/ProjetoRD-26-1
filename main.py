@@ -12,6 +12,9 @@ from core.rendezvous import discover_loop
 from config import *
 import argparse
 
+__my_name = None
+__my_namespace = None
+
 async def start_web_server():
     """Inicia o servidor web Quart/Socket.IO de forma totalmente assíncrona."""
     config = Config()
@@ -32,22 +35,24 @@ async def start_web_server():
 async def main(cli_only: bool = False):
     app._loop = asyncio.get_running_loop()
 
+    global __my_name, __my_namespace
+
     if not cli_only:
         app.interceptar_terminal()
         await start_web_server()
         print(f"=> Acesse http://localhost:{WEBAPP_PORT} no navegador para configurar o Nome e Namespace.")
         await app.config_ready.wait()
-        name = app.peer_config["name"]
-        namespace = app.peer_config["namespace"]
+        __my_name = app.peer_config["name"]
+        __my_namespace = app.peer_config["namespace"]
 
     else:
         print("[MODO TERMINAL] Iniciando sem interface Web.")
-        name = PEER_NAME
-        namespace = PEER_NAMESPACE
+        __my_name = PEER_NAME
+        __my_namespace = PEER_NAMESPACE
 
-    peer_id = f"{name}@{namespace}"
+    peer_id = f"{__my_name}@{__my_namespace}"
 
-    success, data = await register_handler(name, namespace, PEER_PORT)
+    success, data = await register_handler(__my_name, __my_namespace, PEER_PORT)
     if not success:
         print("[REGISTRO] Erro ao registrar-se ao servidor rendezvous")
         exit(-1)
@@ -57,12 +62,12 @@ async def main(cli_only: bool = False):
     # dispara todas as tarefas 
     try:
         await asyncio.gather(
-            register_loop(name, namespace, PEER_PORT), # atualiza o usuário no servidor quando o ttl acaba
+            register_loop(__my_name, __my_namespace, PEER_PORT), # atualiza o usuário no servidor quando o ttl acaba
             servidor(PEER_PORT),
-            discover_loop(name, namespace),
-            message_router(name, namespace),
-            keep_alive(name, namespace),
-            cli_loop(name, namespace)
+            discover_loop(__my_name, __my_namespace),
+            message_router(__my_name, __my_namespace),
+            keep_alive(__my_name, __my_namespace),
+            cli_loop(__my_name, __my_namespace)
         )
 
     except asyncio.CancelledError:
@@ -75,8 +80,22 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     try:
-        asyncio.run(main(cli_only=args.cli))
+        loop.run_until_complete(main(cli_only=args.cli))
 
     except KeyboardInterrupt:
-        print("\n=> Programa interrompido pelo usuário no terminal.")
+        print("\n=> Programa interrompido pelo usuário no terminal...")
+
+        try:
+            if __my_name and __my_namespace:
+                loop.run_until_complete(close_all_connections(__my_name, __my_namespace))
+        
+        except Exception as e:
+            print("[GERAL] Falha ao encerrar:", e)
+
+    finally:
+        loop.close()
+        print("[Processo encerrado]")
