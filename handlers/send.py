@@ -1,10 +1,12 @@
 import asyncio
 from datetime import datetime, timezone
 import json
+import logging
 
 from interfaces.cli import open_send
 from interfaces.web.app import enviar_para_chat_web
 
+log = logging.getLogger("SEND")
 
 async def send_handler(writer: asyncio.StreamWriter, msg):
     """
@@ -17,8 +19,8 @@ async def send_handler(writer: asyncio.StreamWriter, msg):
     if remetente and conteudo:
         await enviar_para_chat_web(remetente, conteudo)
 
-    print(f"\n[MENSAGEM] {msg.get('src')} -> {msg.get('dst')}")
-    print(msg.get("payload"))
+    log.info(f"(MENSAGEM) {msg.get('src')} -> {msg.get('dst')}")
+    log.info(msg.get("payload"))
 
     ack = {
         "type": "ACK",
@@ -32,7 +34,7 @@ async def send_handler(writer: asyncio.StreamWriter, msg):
         await writer.drain()
 
     except Exception as e:
-        print(f"[SEND-HANDLER] Erro ao enviar ACK: {e}")
+        log.error(f"(SEND-HANDLER) Erro ao enviar ACK: {e}")
 
     return True
 
@@ -45,11 +47,11 @@ async def ack_handler(msg):
     event = open_send.get(msg_id)
 
     if event:
-        print(f"[ACK] Recebido ACK para msg_id: {msg_id}")
+        log.info(f"(ACK) Recebido ACK para msg_id: {msg_id}")
         event.set()
         return True
 
-    print("[ACK] Recebido ACK sem solicitação prévia (ou já expirado).")
+    log.warning("(ACK) Recebido ACK sem solicitação prévia (ou já expirado).")
     return False
 
 
@@ -64,8 +66,8 @@ async def pub_handler(msg):
     id_grupo_visual = dst if (dst == "*" or dst.startswith("#")) else f"#{dst}"
 
     if dst and payload:
-        print(f"\n[MENSAGEM PUB] {msg.get('src')} -> {msg.get('dst')}")
-        print(msg.get("payload"))
+        log.info(f"\n(MENSAGEM PUB) {msg.get('src')} -> {msg.get('dst')}")
+        log.info(msg.get("payload"))
         await enviar_para_chat_web(target_id=id_grupo_visual, mensagem=payload)
         return True
     

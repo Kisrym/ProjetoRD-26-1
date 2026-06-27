@@ -5,17 +5,11 @@ import uuid
 import sys
 import logging
 
-from interfaces.web.app import terminal_input_queue, connected_peers, peer_config, interceptar_terminal
+from interfaces.web.app import terminal_input_queue, connected_peers, peer_config
 from core.connection import grups_online, close_all_connections
 from core.server import open_send
 from core.connection import try_to_reconnect
 
-interceptar_terminal()
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)s [%(name)s]: %(message)s",
-    datefmt="%H:%M:%S"
-)
 log = logging.getLogger("CLI")
 
 async def pub(name, namespace, dst, message):
@@ -23,7 +17,7 @@ async def pub(name, namespace, dst, message):
     Envia uma mensagem de broadcast (PUB) para todos os peers de um grupo específico.
     """
     try:
-        print(grups_online)
+        log.info(grups_online)
             
         msg_id = str(uuid.uuid4())
         msg = {
@@ -70,7 +64,7 @@ async def pub(name, namespace, dst, message):
             await asyncio.gather(*tasks) # bota em prática a função
             
     except Exception as e:
-        print("Erro ao enviar mensagem PUB:", e)
+        log.error("Erro ao enviar mensagem PUB:", e)
 
 
 async def send(peer_id, writer: asyncio.StreamWriter, name, namespace, message):
@@ -100,11 +94,11 @@ async def send(peer_id, writer: asyncio.StreamWriter, name, namespace, message):
             return True
             
         except asyncio.TimeoutError:
-            print(f"[CLI] Timeout esperando ACK da mensagem {msg_id}")
+            log.warning(f"Timeout esperando ACK da mensagem {msg_id}")
             return False
             
     except Exception as e:
-        print(f"[CLI] Erro no envio para {peer_id}: {e}")
+        log.error(f"Erro no envio para {peer_id}: {e}")
         return False
     
     finally:
@@ -122,7 +116,7 @@ def read_cmd(queue, loop):
         loop.call_soon_threadsafe(queue.put_nowait, line)
 
 async def cli_loop(name, namespace):
-    print(f"Sistema P2P pronto. Logado como: {name}@{namespace}")
+    log.info(f"Sistema P2P pronto. Logado como: {name}@{namespace}")
     
     if not peer_config.get('name'): #### se ele entrou em modo cmd, ou seja, n configurou
         loop = asyncio.get_running_loop()
@@ -144,11 +138,11 @@ async def cli_loop(name, namespace):
                 if peer_id in connected_peers.get_all_peers():
                     peer = connected_peers.get(peer_id)
                     if not peer:
-                        print("[CLI] Não foi possível resgatar o peer especificado.")
+                        log.error("(MSG) Não foi possível resgatar o peer especificado.")
                         continue
 
                     if peer.get("connection_status") != "CONNECTED":
-                        print("[CLI] Não é possível enviar mensagem para um peer não conectado.")
+                        log.error("(MSG) Não é possível enviar mensagem para um peer não conectado.")
                         continue
 
                     await send(peer_id, peer["writer"], name, namespace, texto)
@@ -164,28 +158,28 @@ async def cli_loop(name, namespace):
                 dst_namespace = partes[1]
                 texto = partes[2]
                 await pub(name, namespace, dst_namespace, texto)
-                print(f"[CLI] Enviando para GRUPO {dst_namespace}: {texto}")
+                log.info(f"(PUB) Enviando para GRUPO {dst_namespace}: {texto}")
                 
             continue
             
         elif cmd.startswith("/peers"):
-            print("[CLI] Peers conhecidos:")
+            log.info("(PEERS) Peers conhecidos:")
             for pid in connected_peers.get_all_peers():
                 peer = connected_peers.get(pid)
                 if not peer: continue
 
-                print(f" - {pid} | {peer.get("ip")}:{peer.get("port")} | Status: {peer.get("connection_status")}")
+                log.info(f" - {pid} | {peer.get("ip")}:{peer.get("port")} | Status: {peer.get("connection_status")}")
 
             continue
             
         elif cmd.startswith("/conn"):
-            print("Conexões Inbound")
+            log.info("Conexões Inbound")
             for item in connected_peers.get_specific_connections('inbound'):
-                print(item)
+                log.info(item)
 
-            print("\nConexões outbound")
+            log.info("Conexões outbound")
             for item in connected_peers.get_specific_connections('outbound'):
-                print(item)
+                log.info(item)
 
             continue
             
@@ -201,31 +195,31 @@ async def cli_loop(name, namespace):
             if tasks:
                 await asyncio.gather(*tasks)
 
-            print("[CLI] Forçando reconexão com todos os peers...")
+            log.info("(RECONNECT) Forçando reconexão com todos os peers...")
             
             continue
         
         elif cmd.startswith("/log"):
             items = cmd.split()
             if len(items) != 2:
-                log.error("Formato de parâmetros inválido. Utilize DEBUG|INFO|WARNING|ERROR")
+                log.error("(LOG) Formato de parâmetros inválido. Utilize DEBUG|INFO|WARNING|ERROR")
             else:
                 nivel = items[1].upper()
                 nivel_atual = logging.getLogger().level
                 if nivel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
                     if nivel != logging.getLevelName(nivel_atual):
                         logging.getLogger().setLevel(getattr(logging, nivel))
-                        log.info(f"Nível de log alterado para {nivel}")
+                        log.info(f"(LOG) Nível de log alterado para {nivel}")
                     else:
                         log.warning(f"Nível de log já está em {nivel}")
                 else:
-                    log.error("Nível inválido")
+                    log.error("(LOG) Nível inválido")
 
         elif cmd.startswith("/rtt"):
             continue
             
-        if cmd.startswith("/quit"):
-            print("Encerrando o sistema...")
+        elif cmd.startswith("/quit"):
+            log.info("(QUIT) Encerrando o sistema...")
 
             try:
                 await close_all_connections(name, namespace)
@@ -234,14 +228,17 @@ async def cli_loop(name, namespace):
                 all_tasks = [t for t in asyncio.all_tasks() if t is not current_task]
                 
                 if all_tasks:
-                    print(f"[QUIT] Cancelando {len(all_tasks)} tarefas secundárias pendentes...")
+                    log.info(f"(QUIT) Cancelando {len(all_tasks)} tarefas secundárias pendentes...")
                     for task in all_tasks:
                         task.cancel()
                     
                     await asyncio.gather(*all_tasks, return_exceptions=True)
                     
             except Exception as e:
-                print(f"Erro durante o encerramento das conexões: {e}")
+                log.error(f"Erro durante o encerramento das conexões: {e}")
             finally:
-                print("[QUIT] Processo finalizado com sucesso.")
+                log.info("(QUIT) Processo finalizado com sucesso.")
                 sys.exit(0)
+        
+        else:
+            log.error("Comando inexistente")

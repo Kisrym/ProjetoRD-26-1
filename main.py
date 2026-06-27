@@ -14,6 +14,7 @@ import argparse
 
 __my_name = None
 __my_namespace = None
+log = logging.getLogger("MAIN")
 
 async def start_web_server():
     """Inicia o servidor web Quart/Socket.IO de forma totalmente assíncrona."""
@@ -27,7 +28,7 @@ async def start_web_server():
             await hypercorn.asyncio.serve(app.asgi_app, config)
 
         except Exception as e:
-            print(f"[ERRO WEBAPP] Servidor web falhou: {e}")
+            log.error(f"(ERRO WEBAPP) Servidor web falhou: {e}")
         
     return asyncio.create_task(run_server())
 
@@ -39,6 +40,11 @@ async def main(cli_only: bool = False):
 
     if not cli_only:
         app.interceptar_terminal()
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s [%(name)s]: %(message)s",
+            datefmt="%H:%M:%S"
+        )
         await start_web_server()
         print(f"=> Acesse http://localhost:{WEBAPP_PORT} no navegador para configurar o Nome e Namespace.")
         await app.config_ready.wait()
@@ -54,10 +60,10 @@ async def main(cli_only: bool = False):
 
     success, data = await register_handler(__my_name, __my_namespace, PEER_PORT)
     if not success:
-        print("[REGISTRO] Erro ao registrar-se ao servidor rendezvous")
+        log.error("(REGISTRO) Erro ao registrar-se ao servidor rendezvous")
         exit(-1)
 
-    print(f"=> Peer configurado com sucesso: {peer_id}")
+    log.info(f"=> Peer configurado com sucesso: {peer_id}")
 
     # dispara todas as tarefas 
     try:
@@ -94,8 +100,8 @@ if __name__ == "__main__":
                 loop.run_until_complete(close_all_connections(__my_name, __my_namespace))
         
         except Exception as e:
-            print("[GERAL] Falha ao encerrar:", e)
+            log.error("(GERAL) Falha ao encerrar:", e)
 
     finally:
         loop.close()
-        print("[Processo encerrado]")
+        log.info("[Processo encerrado]")

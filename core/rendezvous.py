@@ -3,6 +3,10 @@ import json
 from config import *
 from handlers.hello import cadastrar_peers
 from config import PEER_TTL
+import logging
+from interfaces.web.app import interceptar_terminal
+
+log = logging.getLogger("RENDEZVOUS")
 
 async def register_loop(name, namespace, peer_port):
     while True:
@@ -12,7 +16,7 @@ async def register_loop(name, namespace, peer_port):
             await asyncio.sleep(data.get("ttl") * 0.8) # vai renovar o registro antes de acabar o ttl
 
         else:
-            print("[REGISTER] Erro ao tentar registrar-se ao servidor. Tentando novamente...")
+            log.error("(REGISTER) Erro ao tentar registrar-se ao servidor. Tentando novamente...")
             await asyncio.sleep(5)
 
 async def register_handler(name, namespace, peer_port):
@@ -27,10 +31,10 @@ async def register_handler(name, namespace, peer_port):
         
         else:
             contador += 1
-            print(f"[RENDEZVOUS] Tentativa {contador}/{RDZV_RECONNECT_TRIES} de registro falhou. Tentando novamente em 5 segundos...")
+            log.warning(f"Tentativa {contador}/{RDZV_RECONNECT_TRIES} de registro falhou. Tentando novamente em 5 segundos...")
             await asyncio.sleep(5)
             
-    print(f"[RENDEZVOUS] Falha ao registrar o peer após {RDZV_RECONNECT_TRIES} tentativas.")
+    log.error(f"Falha ao registrar o peer após {RDZV_RECONNECT_TRIES} tentativas.")
     return False, None
 
 
@@ -54,7 +58,7 @@ async def register(name, namespace, peer_port):
         
         response_bytes = await reader.read(4096)
         if not response_bytes:
-            print("[RENDEZVOUS] Servidor fechou a conexão sem responder.")
+            log.error("Servidor fechou a conexão sem responder.")
             return 0, None
             
         response = response_bytes.decode()
@@ -67,29 +71,29 @@ async def register(name, namespace, peer_port):
             msg_err = data.get("message")
 
             if msg_err == "bad_name":
-                print("[RENDEZVOUS] Nome Inválido. Deve conter entre 1 e 63 caracteres.")
+                log.error("Nome Inválido. Deve conter entre 1 e 63 caracteres.")
 
             elif msg_err == "bad_namespace":
-                print("[RENDEZVOUS] Namespace Inválivdo. Deve conter entre 1 e 63 caracteres.")
+                log.error("Namespace Inválivdo. Deve conter entre 1 e 63 caracteres.")
 
             elif msg_err == "bad_ttl":
-                print("[RENDEZVOUS] TTL Inválido. Deve ser um inteiro entre 1 e 86400.")
+                log.error("TTL Inválido. Deve ser um inteiro entre 1 e 86400.")
 
             elif msg_err == "bad_port":
-                print("[RENDEZVOUS] Porta Inválida. Deve ser um inteiro entre 1 e 65535.")
+                log.error("Porta Inválida. Deve ser um inteiro entre 1 e 65535.")
 
             return 0, None
             
         elif data.get("status") == "OK":     
-            print("[RENDEZVOUS] Registrado com sucesso!")
+            log.info("Registrado com sucesso!")
             return 1, data
         
         else:
-            print("[RENDEZVOUS] Resposta desconhecida do servidor.")
+            log.warning("Resposta desconhecida do servidor.")
             return 0, None
 
     except Exception as e:
-        print(f"[RENDEZVOUS] Erro de conexão ao registrar: {e}")
+        log.error(f"Erro de conexão ao registrar: {e}")
         return 0, None
 
 
@@ -113,26 +117,26 @@ async def unregister(name, namespace, port):
         
         if data.get("status") == 'ERROR':
             if data.get('message') == "ad_port (abc)":
-                print("[UNREGISTER] Port inválido ou está fora do intervalo [1, 65535]")
+                log.error("(UNREGISTER) Port inválido ou está fora do intervalo [1, 65535]")
 
             elif data.get('message') == "bad_namespace":
-                print("[UNREGISTER] Namespace Inválivdo. Deve conter entre 1 e 63 caracteres.")
+                log.error("(UNREGISTER) Namespace Inválivdo. Deve conter entre 1 e 63 caracteres.")
 
             elif data.get('message') == "peer_not_registered":
-                print("[UNREGISTER] Peer não registrado no rendezvous")
+                log.error("(UNREGISTER) Peer não registrado no rendezvous")
 
             elif data.get('message') == "namespace_required":
-                print("[UNREGISTER] Campo obrigatório 'namespace' ausente")
+                log.error("(UNREGISTER) Campo obrigatório 'namespace' ausente")
 
             elif data.get('message') == "peer_credentials_do_not_match":
-                print("[UNREGISTER] Credenciais de usuário não correspondem ao banco de dados")
+                log.error("(UNREGISTER) Credenciais de usuário não correspondem ao banco de dados")
 
             return 0
         
         return 1
     
     except Exception as e:
-        print("[UNREGISTER] Erro ao retirar registro:", e)
+        log.error("(UNREGISTER) Erro ao retirar registro:", e)
         return None
     
     finally:
@@ -144,7 +148,7 @@ async def discover_loop(name: str, peer_namespace: str, namespace = None):
         peers, err = await discorver_handler()
 
         if err:
-            print("[RENDEZVOUS] Erro ao descobrir peers:", err)
+            log.error("Erro ao descobrir peers:", err)
 
         else:
             await cadastrar_peers(peers, name, peer_namespace)
@@ -160,19 +164,19 @@ async def discorver_handler(namespace=None):
         peers = await discover(namespace)
 
         if peers:
-            print("[RENDEZVOUS] Peers encontrados:")
+            log.info("Peers encontrados:")
 
             for peer in peers:
-                print(f" - {peer['name']}@{peer['namespace']}:{peer['port']}")
+                log.info(f" - {peer['name']}@{peer['namespace']}:{peer['port']}")
 
             return peers, 0
         
         else:
             contador += 1
-            print(f"[RENDEZVOUS] Tentativa {contador}/{RDZV_DISCOVER_TRIES} de descoberta falhou. Tentando novamente em 5 segundos...")
+            log.warning(f"Tentativa {contador}/{RDZV_DISCOVER_TRIES} de descoberta falhou. Tentando novamente em 5 segundos...")
             await asyncio.sleep(5)
             
-    print("[RENDEZVOUS] Falha ao descobrir peers após 3 tentativas.")
+    log.error("Falha ao descobrir peers após 3 tentativas.")
     return [], 1
 
 
@@ -204,10 +208,10 @@ async def discover(namespace=None):
             msg_err = data.get("message")
 
             if msg_err == "bad_namespace":
-                print("[RENDEZVOUS] Namespace Inválido. Deve conter entre 1 e 63 caracteres.")
+                log.error("Namespace Inválido. Deve conter entre 1 e 63 caracteres.")
 
             if msg_err == "peer_not_registered":
-                print("[RENDEZVOUS] Peer não registrado.")
+                log.error("Peer não registrado.")
 
             return []
 
@@ -215,9 +219,9 @@ async def discover(namespace=None):
             return data.get("peers", [])
         
         else:
-            print("[RENDEZVOUS] Resposta desconhecida do servidor.")
+            log.warning("Resposta desconhecida do servidor.")
             return []
             
     except Exception as e:
-        print(f"[RENDEZVOUS] Erro de conexão ao descobrir peers: {e}")
+        log.error(f"Erro de conexão ao descobrir peers: {e}")
         return []

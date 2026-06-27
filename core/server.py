@@ -1,5 +1,8 @@
 import asyncio
 import json
+import logging
+
+log = logging.getLogger("SERVIDOR")
 
 message_queue = asyncio.Queue() # a queue nativa é bloqueante
 
@@ -37,13 +40,13 @@ async def peer_listener(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         "msg": msg
                     })
                 except json.JSONDecodeError:
-                    print(f"[SERVIDOR] Erro ao decodificar JSON de {addr}")
+                    log.error(f"Erro ao decodificar JSON de {addr}")
 
     except Exception as e:
-        print(f"[SERVIDOR] Erro no listener do peer {addr}: {e}")
+        log.error(f"Erro no listener do peer {addr}: {e}")
 
     finally:
-        print(f"[SERVIDOR] Conexão encerrada com {addr}")
+        log.info(f"Conexão encerrada com {addr}")
         writer.close()
         await writer.wait_closed()
 
@@ -52,18 +55,18 @@ async def servidor(port, host="0.0.0.0"):
     """
     Inicia o servidor TCP assíncrono.
     """
-    print(f"[SERVIDOR] Iniciando em {host}:{port}...")
+    log.info(f"Iniciando em {host}:{port}...")
 
     async def handle_client(reader, writer):
         addr = writer.get_extra_info('peername')
-        print(f"[NOVA CONEXÃO] {addr}")
+        log.info(f"(NOVA CONEXÃO) {addr}")
         
         # cria uma task em background para escutar o cliente novo
         asyncio.create_task(peer_listener(reader, writer, addr))
 
     server = await asyncio.start_server(handle_client, host, port)
 
-    print(f"[SERVIDOR] Escutando em {host}:{port}")
+    log.info(f"Escutando em {host}:{port}")
 
     # roda até ser interrompido
     async with server:

@@ -4,6 +4,9 @@ import sys
 from quart import Quart, render_template
 import socketio
 from core.peer_table import PeerTable
+import logging
+
+log = logging.getLogger("WEBAPP")
 
 app = Quart(__name__)
 app.config['SECRET_KEY'] = 'secret'
@@ -41,12 +44,12 @@ class WebTerminalOut:
 def interceptar_terminal():
     sys.stdout = WebTerminalOut(sys.stdout)
     sys.stderr = WebTerminalOut(sys.stderr)
-    print("[WEBAPP] Terminal integrado com sucesso.")
+    log.info("Terminal integrado com sucesso.")
 
 async def monitor_peers():
     """Tarefa assíncrona de monitoramento executada no loop principal."""
     last_state = None
-    print("[WEBAPP] Monitor de peers iniciado.")
+    log.info("Monitor de peers iniciado.")
     while True:
         current_peers = []
 

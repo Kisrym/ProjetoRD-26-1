@@ -5,9 +5,12 @@ from handlers.hello import *
 from handlers.ping import *
 from handlers.send import *
 from handlers.bye import *
+import logging
+
+log = logging.getLogger("ROTEADOR")
 
 async def message_router(name, namespace):
-    print("[ROTEADOR] Inicializado e aguardando mensagens...")
+    log.info("Inicializado e aguardando mensagens...")
     
     while True:
         event = await message_queue.get()
@@ -18,7 +21,7 @@ async def message_router(name, namespace):
 
         msg_type = msg.get("type")
 
-        print(f"[ROTEADOR] Processando: {msg_type} de {addr}")
+        log.info(f"Processando: {msg_type} de {addr}")
 
         try:
             if msg_type == "HELLO":
@@ -49,7 +52,7 @@ async def message_router(name, namespace):
                 await bye_ok_handler(msg)
 
         except Exception as e:
-            print(f"[ROTEADOR] Erro ao processar mensagem {msg_type}: {e}")
+            log.error(f"Erro ao processar mensagem {msg_type}: {e}")
         
         finally:
             message_queue.task_done()

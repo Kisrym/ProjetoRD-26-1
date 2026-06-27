@@ -1,9 +1,12 @@
 import asyncio
 import json
 import time
+import logging
 
 from core.server import open_hello, peer_listener
 from interfaces.web.app import connected_peers
+
+log = logging.getLogger("HELLO")
 
 async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
     """
@@ -29,23 +32,23 @@ async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
         writer.write((json.dumps(paylaod) + "\n").encode())
         await writer.drain()
 
-        print(f"[HANDSHAKE] Enviado HELLO para {peer_id} em {peer_ip}:{peer_port}")
+        log.info(f"(HANDSHAKE) Enviado HELLO para {peer_id} em {peer_ip}:{peer_port}")
 
         try:
             await asyncio.wait_for(event.wait(), timeout=2.0) # espera 2 segundos pro evento disparar
             
-            print(f"[HANDSHAKE] Conexão com {peer_id} bem sucedida")
+            log.info(f"(HANDSHAKE) Conexão com {peer_id} bem sucedida")
             return writer
             
         except asyncio.TimeoutError:
-            print(f"[HANDSHAKE] Timeout esperando HELLO_OK de {peer_id}")
+            log.error(f"(HANDSHAKE) Timeout esperando HELLO_OK de {peer_id}")
             writer.close()
             await writer.wait_closed()
 
             return None
 
     except Exception as e:
-        print(f"[HANDSHAKE] Erro no handshake com {peer_id}: {e}")
+        log.error(f"(HANDSHAKE) Erro no handshake com {peer_id}: {e}")
         return None
     
     finally:
@@ -67,7 +70,7 @@ async def cadastrar_peers(peers, name, namespace):
 
         p = connected_peers.get(peer_id)
         if p and (p.get("connection_status") == "DISCONNECTED" or p.get("connection_status") == "TRYING_CONNECTION"):
-            print(f"[CONEXÃO] Tentando conexão com {peer_id} em {peer['ip']}:{peer['port']}...")
+            log.info(f"(CONEXÃO) Tentando conexão com {peer_id} em {peer['ip']}:{peer['port']}...")
             
             writer = await hand_shake(peer["ip"], peer["port"], peer_id, name, namespace)
             
@@ -100,11 +103,11 @@ async def hello_handler(writer: asyncio.StreamWriter, addr, msg, name, namespace
         writer.write((json.dumps(response) + "\n").encode())
         await writer.drain()
 
-        print(f"[HELLO] {peer_id} conectado e confirmado.")
+        log.info(f"{peer_id} conectado e confirmado.")
         return True
     
     except Exception as e:
-        print(f"[HELLO] Erro ao responder HELLO_OK para {peer_id}: {e}")
+        log.error(f"Erro ao responder HELLO_OK para {peer_id}: {e}")
         return False
 
 
@@ -120,5 +123,5 @@ async def hello_ok_handler(msg):
         return True
     
     else:        
-        print(f"[HELLO_OK] Recebido HELLO_OK de {peer_id} sem solicitação prévia.")
+        log.warning(f"(HELLO_OK) Recebido HELLO_OK de {peer_id} sem solicitação prévia.")
         return False

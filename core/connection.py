@@ -1,5 +1,6 @@
 import asyncio
 import time
+import logging
 
 from handlers.ping import *
 from core.rendezvous import *
@@ -8,6 +9,7 @@ from config import PEER_PORT, PING_INTERVAL, PEER_RECONNECT_TRIES
 from interfaces.web.app import connected_peers
 
 grups_online = {}
+log = logging.getLogger("CONEXÃO")
 
 def add_grups():
     for peer_id, _ in connected_peers.items():
@@ -35,7 +37,7 @@ async def keep_alive(name, namespace):
                 ip = dados["ip"]
                 port = dados["port"]
 
-                print(f"[PING] {pid} ocioso, enviando PING...")
+                log.info(f"(PING) {pid} ocioso, enviando PING...")
 
                 success = await send_ping(writer, pid)
 
@@ -43,7 +45,7 @@ async def keep_alive(name, namespace):
                     dados["last_ping"] = time.time()
 
                 else:
-                    print(f"[KEEP_ALIVE] Detectada queda de {pid}. Alterando status de conexão...") # n voltou um pong
+                    log.warning(f"(KEEP_ALIVE) Detectada queda de {pid}. Alterando status de conexão...") # n voltou um pong
                     connected_peers.change_peer_connection_status(pid, "TRYING_CONNECTION")
                     # remove o socket desse peer
                     try:
@@ -64,20 +66,20 @@ async def try_to_reconnect(peer_id, ip, port, name, namespace):
     tries = 1
     timeout = 2.0
 
-    print(f"[RECONEXÃO] Iniciando rotina de reconexão com {peer_id}")
+    log.info(f"(RECONEXÃO) Iniciando rotina de reconexão com {peer_id}")
 
     while tries <= PEER_RECONNECT_TRIES:
         # se o peer se conectou com o server, para a tentativa
         peer = connected_peers.get(peer_id)
         if peer and peer.get("connection_status") == "CONNECTED":
-            print(f"[RECONEXÃO] {peer_id} já se reconectou")
+            log.info(f"(RECONEXÃO) {peer_id} já se reconectou")
             return True
         
         try:
             writer = await hand_shake(ip, port, peer_id, name, namespace)
 
             if writer is not None:
-                print(f"[RECONEXÃO] Sucesso! {peer_id} está conectado novamente.")
+                log.info(f"(RECONEXÃO) Sucesso! {peer_id} está conectado novamente.")
 
                 connected_peers.connect_peer(peer_id, writer, time.time(), "outbound")
                 connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
@@ -93,11 +95,11 @@ async def try_to_reconnect(peer_id, ip, port, name, namespace):
         
         tries += 1
 
-    print(f"[RECONEXÃO] Esgotadas as {PEER_RECONNECT_TRIES} tentativas.")
+    log.error(f"(RECONEXÃO) Esgotadas as {PEER_RECONNECT_TRIES} tentativas.")
     return False
 
 async def close_all_connections(name, namespace):
-    print("\n[QUIT] Iniciando encerramento...")
+    log.info("\n(QUIT) Iniciando encerramento...")
 
     bye_msg = {
         "type": "BYE",
@@ -111,7 +113,7 @@ async def close_all_connections(name, namespace):
     peers_ativos = list(connected_peers.items())
     
     if peers_ativos:
-        print(f"[QUIT] Avisando {len(peers_ativos)} peers sobre a saida")
+        log.info(f"(QUIT) Avisando {len(peers_ativos)} peers sobre a saida")
         
         for peer_id, dados in peers_ativos:
             writer = dados.get("writer")
@@ -122,7 +124,7 @@ async def close_all_connections(name, namespace):
                     await w.drain()
                     w.close()
                     await w.wait_closed()
-                    print(f"[QUIT] Conexão com {pid} encerrada com sucesso.")
+                    log.info(f"(QUIT) Conexão com {pid} encerrada com sucesso.")
 
                 except Exception:
                     pass
@@ -135,14 +137,14 @@ async def close_all_connections(name, namespace):
         success = await unregister(name, namespace, PEER_PORT)
 
         if success:
-            print("[QUIT] Desregistrado do servidor Rendezvous com sucesso.")
+            log.info("(QUIT) Desregistrado do servidor Rendezvous com sucesso.")
         else:
-            print("[QUIT] Falha ao desregistrar do servidor Rendezvous.")
+            log.error("(QUIT) Falha ao desregistrar do servidor Rendezvous.")
             
     except NameError:
-        print("[QUIT] Alerta: unregister_handler não encontrado. Pulando desregistro central.")
+        log.warning("(QUIT) Alerta: unregister_handler não encontrado. Pulando desregistro central.")
 
     except Exception as e:
-        print(f"[QUIT] Erro ao comunicar saída para o Rendezvous: {e}")
+        log.error(f"(QUIT) Erro ao comunicar saída para o Rendezvous: {e}")
 
-    print("[QUIT] Sistema P2P finalizado de forma limpa.")
+    log.info("(QUIT) Sistema P2P finalizado de forma limpa.")

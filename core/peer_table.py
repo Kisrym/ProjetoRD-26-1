@@ -1,4 +1,7 @@
 import asyncio
+import logging
+
+log = logging.getLogger("PEER TABLE")
 
 class PeerTable:
     def __init__(self):
@@ -22,7 +25,7 @@ class PeerTable:
 
     def connect_peer(self, peer_id: str, writer: asyncio.StreamWriter, last_ping: float, direction: str):
         if peer_id not in self.peers:
-            print("[PEER_TABLE] Peer não está registrado na tabela.")
+            log.error("Peer não está registrado na tabela.")
 
         self.peers[peer_id]["writer"] = writer
         self.peers[peer_id]["last_ping"] = last_ping
@@ -30,14 +33,14 @@ class PeerTable:
 
     def change_peer_connection_status(self, peer_id: str, status: str):
         if status not in ["CONNECTED", "TRYING_CONNECTION", "DISCONNECTED"]:
-            print("[PEER_TABLE] Status inválido.")
+            log.error("Status inválido.")
             return
         
         self.peers[peer_id]['connection_status'] = status
 
     def change_peer_connection_direction(self, peer_id: str, direction: str):
         if direction != "inbound" and direction != "outbound":
-            print("[PEER_TABLE] Direção inválida.")
+            log.error("Direção inválida.")
             return
         
         self.peers[peer_id]['direction'] = direction

@@ -3,8 +3,11 @@ from datetime import datetime, timezone
 import json
 import time
 import uuid
+import logging
 
 from core.server import open_ping 
+
+log = logging.getLogger("PING")
 
 async def send_ping(writer: asyncio.StreamWriter, peer_id):
     """
@@ -39,16 +42,16 @@ async def send_ping(writer: asyncio.StreamWriter, peer_id):
         #    if len(connected_peers[peer_id]["rtts"]) > 5:
         #        connected_peers[peer_id]["rtts"].pop(0)
 
-        print(f"[KEEP_ALIVE] PONG de {peer_id} recebido") # | RTT = {rtt:.2f} ms")
+        log.info(f"(KEEP_ALIVE) PONG de {peer_id} recebido") # | RTT = {rtt:.2f} ms")
             
         return True
         
     except asyncio.TimeoutError:
-        print(f"[PING] Timeout de 2.0s esperando PONG do peer {peer_id} (msg_id: {msg_id})")
+        log.warning(f"Timeout de 2.0s esperando PONG do peer {peer_id} (msg_id: {msg_id})")
         return False
     
     except Exception as e:
-        print(f"[PING] Erro ao tentar pingar {peer_id}: {e}")
+        log.error(f"Erro ao tentar pingar {peer_id}: {e}")
         return False
     
     finally:
@@ -69,11 +72,11 @@ async def ping_handler(writer: asyncio.StreamWriter, addr, msg):
     try:
         writer.write((json.dumps(response) + "\n").encode())
         await writer.drain()
-        print(f"[PING] Respondido PING vindo de {addr}")
+        log.info(f"Respondido PING vindo de {addr}")
         return True
     
     except Exception as e:
-        print(f"[PING] Erro ao responder PING para {addr}: {e}")
+        log.error(f"Erro ao responder PING para {addr}: {e}")
         return False
 
 
@@ -88,5 +91,5 @@ async def pong_handler(msg):
         event.set() # acorda o event.wait() lá do send_ping
         return True
     else:
-        print(f"[PONG] Recebido PONG do msg_id {msg_id} sem solicitação prévia ou expirado.")
+        log.warning(f"(PONG) Recebido PONG do msg_id {msg_id} sem solicitação prévia ou expirado.")
         return False
