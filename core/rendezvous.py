@@ -1,3 +1,16 @@
+# ==============================================================================
+# UNIVERSIDADE DE BRASÍLIA (UnB) - DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO
+# REDES DE COMPUTADORES - SEMESTRE: 2026/1 - PROF. MARCOS FAGUNDES CAETANO
+# PROJETO FINAL: Chat Peer-to-Peer (P2P) | GRUPO 8
+# 
+# INTEGRANTES:
+#   - Kaio Santos Araújo       (Matrícula: 242009972)
+#   - Caio Dias Fleury         (Matrícula: 242009909)
+#   - João Paulo Silva Mendes  (Matrícula: 242026187)
+# 
+# ARQUIVO: core/rendezvous.py
+# ==============================================================================
+
 import asyncio
 import json
 from config import *
