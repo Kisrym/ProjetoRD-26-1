@@ -66,6 +66,11 @@ async def main(cli_only: bool = False):
 
     else:
         print("[MODO TERMINAL] Iniciando sem interface Web.")
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s [%(name)s]: %(message)s",
+            datefmt="%H:%M:%S"
+        )
         __my_name = PEER_NAME
         __my_namespace = PEER_NAMESPACE
 

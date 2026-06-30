@@ -23,7 +23,9 @@ class PeerTable:
     def registrar_peer(self, peer: dict):
         peer_id = f"{peer.get('name')}@{peer.get('namespace')}"
 
-        if peer_id in self.peers: return
+        if peer_id in self.peers:
+            self.update_peer(peer_id, peer)
+            return
 
         self.peers[peer_id] = {
             "peer_id" : peer_id,
@@ -35,6 +37,9 @@ class PeerTable:
             "expires_in" : peer.get("expires_in"),
             "connection_status" : "TRYING_CONNECTION"
         }
+
+    def update_peer(self, peer_id: str, peer: dict):
+        self.peers[peer_id].update(peer)
 
     def connect_peer(self, peer_id: str, writer: asyncio.StreamWriter, last_ping: float, direction: str):
         if peer_id not in self.peers:

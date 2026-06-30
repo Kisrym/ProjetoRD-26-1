@@ -101,6 +101,24 @@ async def hello_handler(writer: asyncio.StreamWriter, addr, msg, name, namespace
     if peer_id is None:
         return False
 
+    if peer_id not in connected_peers.get_all_peers():
+        log.info("[HELLO] Registrando novo peer de conexão inbound...")
+        peer_name = peer_id.split("@")[0]
+        peer_namespace = peer_id.split("@")[1]
+
+        peer = {
+            "peer_id" : peer_id,
+            "ip" : addr[0],
+            "port" : addr[1],
+            "name" : peer_name,
+            "namespace" : peer_namespace,
+            "ttl" : 3600,
+            "expires_in" : 3600,
+            "connection_status" : "TRYING_CONNECTION"
+        }
+
+        connected_peers.registrar_peer(peer)
+
     connected_peers.change_peer_connection_status(peer_id, "CONNECTED")
     connected_peers.connect_peer(peer_id, writer, time.time(), "inbound")
     

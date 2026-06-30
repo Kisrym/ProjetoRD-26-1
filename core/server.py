@@ -14,6 +14,7 @@
 import asyncio
 import json
 import logging
+from interfaces.web.app import connected_peers
 
 log = logging.getLogger("SERVIDOR")
 
