@@ -14,10 +14,10 @@
 import asyncio
 from datetime import datetime, timezone
 import json
-import time
 import uuid
 import logging
 
+from config import ASYNCIO_EVENT_TIMEOUT
 from core.server import open_ping 
 
 log = logging.getLogger("PING")
@@ -43,7 +43,7 @@ async def send_ping(writer: asyncio.StreamWriter, peer_id):
         writer.write((json.dumps(ping_msg) + "\n").encode())
         await writer.drain()
 
-        await asyncio.wait_for(event.wait(), timeout=2.0)
+        await asyncio.wait_for(event.wait(), timeout=ASYNCIO_EVENT_TIMEOUT)
         
         #rtt = (time.time() - tempo_envio) * 1000
         
@@ -60,7 +60,7 @@ async def send_ping(writer: asyncio.StreamWriter, peer_id):
         return True
         
     except asyncio.TimeoutError:
-        log.warning(f"Timeout de 2.0s esperando PONG do peer {peer_id} (msg_id: {msg_id})")
+        log.warning(f"Timeout de {ASYNCIO_EVENT_TIMEOUT}s esperando PONG do peer {peer_id} (msg_id: {msg_id})")
         return False
     
     except Exception as e:

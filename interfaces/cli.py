@@ -18,6 +18,7 @@ import uuid
 import sys
 import logging
 
+from config import ASYNCIO_EVENT_TIMEOUT
 from interfaces.web.app import terminal_input_queue, connected_peers, peer_config
 from core.connection import grups_online, close_all_connections
 from core.server import open_send
@@ -103,7 +104,7 @@ async def send(peer_id, writer: asyncio.StreamWriter, name, namespace, message):
         await writer.drain()
 
         try:
-            await asyncio.wait_for(event.wait(), timeout=5.0)
+            await asyncio.wait_for(event.wait(), timeout=ASYNCIO_EVENT_TIMEOUT)
             return True
             
         except asyncio.TimeoutError:

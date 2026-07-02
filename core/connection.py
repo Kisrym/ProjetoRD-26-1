@@ -77,7 +77,7 @@ async def keep_alive(name, namespace):
 
 async def try_to_reconnect(peer_id, ip, port, name, namespace):
     tries = 1
-    timeout = 2.0
+    timeout = INITIAL_TIMEOUT_PEER_RECONNECTION
 
     log.info(f"(RECONEXÃO) Iniciando rotina de reconexão com {peer_id}")
 

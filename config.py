@@ -18,15 +18,20 @@ with open("config.json", "r") as f:
 
 HOST = config["host"]
 PORT = config["port"]
+RDZV_RECONNECT_TRIES = config["max_rdzv_reconnect_attempts"]
+RDZV_DISCOVER_TRIES = config["max_rdzv_discover_attempts"]
+RDZV_DISCOVER_INTERVAL = config["rdzv_discover_interval_seconds"]
+RDZV_REDISCOVER_INTERVAL = config["rdzv_rediscover_interval_seconds"]
+RDZV_REGISTER_ATTEMPT_INTERVAL = config["rdzv_register_attempt_interval_seconds"]
 
 PEER_NAME = config["name"]
 PEER_NAMESPACE = config["namespace"]
 PEER_PORT = config["peer_port"]
 PEER_TTL = config["ttl"]
 
-WEBAPP_PORT = config["webapp_port"]
-
+INITIAL_TIMEOUT_PEER_RECONNECTION = config["initial_timeout_peer_reconnection"]
 PEER_RECONNECT_TRIES = config["max_peer_reconnect_attempts"]
-RDZV_RECONNECT_TRIES = config["max_rdzv_reconnect_attempts"]
-RDZV_DISCOVER_TRIES = config["max_rdzv_discover_attempts"]
 PING_INTERVAL = config["ping_interval_seconds"]
+
+WEBAPP_PORT = config["webapp_port"]
+ASYNCIO_EVENT_TIMEOUT = config["asyncio_event_timeout"]

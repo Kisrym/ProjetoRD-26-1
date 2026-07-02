@@ -86,6 +86,8 @@ http://localhost:8000
 
 Nesse modo, o terminal é integrado ao webapp. A interface web solicita o nome e o namespace do peer antes de liberar o restante da execução. Depois disso, o peer se registra no Rendezvous, descobre outros peers e passa a aceitar comandos e mensagens.
 
+**Observação:** Importante ressaltar que o terminal do programa (usado para rodá-lo) estará temporariamente bloqueado. Para encerrar a aplicação nesse modo, basta usar o comando `/quit` no terminal principal.
+
 ### 4. Rodar no modo terminal, com `--cli`
 
 Para executar sem interface web:

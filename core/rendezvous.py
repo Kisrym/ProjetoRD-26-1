@@ -17,7 +17,7 @@ from config import *
 from handlers.hello import cadastrar_peers
 from config import PEER_TTL
 import logging
-from interfaces.web.app import interceptar_terminal
+from interfaces.web.app import interceptar_terminal, connected_peers
 
 log = logging.getLogger("RENDEZVOUS")
 
@@ -30,7 +30,7 @@ async def register_loop(name, namespace, peer_port):
 
         else:
             log.error("(REGISTER) Erro ao tentar registrar-se ao servidor. Tentando novamente...")
-            await asyncio.sleep(5)
+            await asyncio.sleep(RDZV_REGISTER_ATTEMPT_INTERVAL)
 
 async def register_handler(name, namespace, peer_port):
     """
@@ -45,7 +45,7 @@ async def register_handler(name, namespace, peer_port):
         else:
             contador += 1
             log.warning(f"Tentativa {contador}/{RDZV_RECONNECT_TRIES} de registro falhou. Tentando novamente em 5 segundos...")
-            await asyncio.sleep(5)
+            await asyncio.sleep(RDZV_REGISTER_ATTEMPT_INTERVAL)
             
     log.error(f"Falha ao registrar o peer após {RDZV_RECONNECT_TRIES} tentativas.")
     return False, None
@@ -158,7 +158,7 @@ async def unregister(name, namespace, port):
 
 async def discover_loop(name: str, peer_namespace: str, namespace = None):
     while True:
-        peers, err = await discorver_handler()
+        peers, err = await discorver_handler(name, peer_namespace)
 
         if err:
             log.error("Erro ao descobrir peers:", err)
@@ -166,9 +166,9 @@ async def discover_loop(name: str, peer_namespace: str, namespace = None):
         else:
             await cadastrar_peers(peers, name, peer_namespace)
 
-        await asyncio.sleep(30)
+        await asyncio.sleep(RDZV_DISCOVER_INTERVAL)
 
-async def discorver_handler(namespace=None):
+async def discorver_handler(my_name: str, my_namespace:str, namespace=None):
     """
     Tenta descobrir peers no servidor Rendezvous até 3 vezes.
     """
@@ -180,14 +180,23 @@ async def discorver_handler(namespace=None):
             log.info("Peers encontrados:")
 
             for peer in peers:
-                log.info(f" - {peer['name']}@{peer['namespace']}:{peer['port']}")
+                peer_id = f"{peer['name']}@{peer['namespace']}"
+                
+                if peer_id == f"{my_name}@{my_namespace}":
+                    continue
+
+                if peer_id in connected_peers.get_all_peers():
+                    log.info(f" - {peer['name']}@{peer['namespace']}:{peer['port']}")
+
+                else:
+                    log.info(f" - {peer['name']}@{peer['namespace']}:{peer['port']} (NEW PEER)")
 
             return peers, 0
         
         else:
             contador += 1
             log.warning(f"Tentativa {contador}/{RDZV_DISCOVER_TRIES} de descoberta falhou. Tentando novamente em 5 segundos...")
-            await asyncio.sleep(5)
+            await asyncio.sleep(RDZV_REDISCOVER_INTERVAL)
             
     log.error("Falha ao descobrir peers após 3 tentativas.")
     return [], 1

@@ -1,16 +1,21 @@
 {
-  "host": "rdv.mfcaetano.cc",
+  "host": "0.0.0.0",
   "port": 8080,
+  "max_rdzv_reconnect_attempts" : 3,
+  "max_rdzv_discover_attempts" : 3,
+  "rdzv_discover_interval_seconds" : 30,
+  "rdzv_rediscover_interval_seconds" : 5,
+  "rdzv_register_attempt_interval_seconds" : 5,
 
-  "name" : "user",
-  "namespace" : "test",
+  "name" : "Grupo8",
+  "namespace" : "CIC",
   "peer_port": 5000,
   "ttl" : 3600,
 
-  "webapp_port": 8000,
-
   "max_peer_reconnect_attempts": 5,
-  "max_rdzv_reconnect_attempts" : 3,
-  "max_rdzv_discover_attempts" : 3,
-  "ping_interval_seconds" : 30 
+  "initial_timeout_peer_reconnection" : 2.0,
+  "ping_interval_seconds" : 30,
+
+  "webapp_port": 8000,
+  "asyncio_event_timeout" : 2.0
 }

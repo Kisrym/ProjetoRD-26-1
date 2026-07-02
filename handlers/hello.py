@@ -16,6 +16,7 @@ import json
 import time
 import logging
 
+from config import ASYNCIO_EVENT_TIMEOUT
 from core.server import open_hello, peer_listener
 from interfaces.web.app import connected_peers
 
@@ -48,7 +49,7 @@ async def hand_shake(peer_ip, peer_port, peer_id, name, namespace):
         log.info(f"(HANDSHAKE) Enviado HELLO para {peer_id} em {peer_ip}:{peer_port}")
 
         try:
-            await asyncio.wait_for(event.wait(), timeout=2.0) # espera 2 segundos pro evento disparar
+            await asyncio.wait_for(event.wait(), timeout=ASYNCIO_EVENT_TIMEOUT) # espera 2 segundos pro evento disparar
             
             log.info(f"(HANDSHAKE) Conexão com {peer_id} bem sucedida")
             return writer

@@ -30,7 +30,6 @@ __my_namespace = None
 log = logging.getLogger("MAIN")
 
 async def start_web_server():
-    """Inicia o servidor web Quart/Socket.IO de forma totalmente assíncrona."""
     config = Config()
     config.bind = [f"0.0.0.0:{WEBAPP_PORT}"]
 
